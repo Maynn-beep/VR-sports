@@ -46,7 +46,9 @@ namespace VRSports.EditorTools
             var ballPhys = PhysMat("Basketball", 0.6f, 0.75f, PhysicsMaterialCombine.Average, PhysicsMaterialCombine.Average);
             var floorPhys = PhysMat("Court_Floor", 0.6f, 0.85f, PhysicsMaterialCombine.Average, PhysicsMaterialCombine.Average);
             var rimPhys = PhysMat("Rim", 0.5f, 0.4f, PhysicsMaterialCombine.Average, PhysicsMaterialCombine.Average);
-            var boardPhys = PhysMat("Backboard", 0.4f, 0.6f, PhysicsMaterialCombine.Average, PhysicsMaterialCombine.Average);
+            // Щит «мягче» и шершавее: упругость 0.35 (итог с мячом 0.55), трение 0.6 —
+            // чтобы обратное вращение успевало «сцепиться» со щитом и увести мяч вниз.
+            var boardPhys = PhysMat("Backboard", 0.6f, 0.35f, PhysicsMaterialCombine.Average, PhysicsMaterialCombine.Average);
 
             // Пол из общего сборщика: отмечаем его как «пол» и даём упругий материал.
             var floor = GameObject.Find("Floor");
