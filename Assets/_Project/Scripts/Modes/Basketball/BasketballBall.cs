@@ -29,6 +29,8 @@ namespace VRSports.Modes.Basketball
         [SerializeField] private float dragK = 0.0130f;    // ½·1.225·0.47·π·0.12²
         [SerializeField] private float magnusK = 0.0033f;  // ½·1.225·π·0.12²·0.12
         [SerializeField] private float maxSpin = 40f;
+        [Tooltip("Минимальное обратное вращение после броска, рад/с (~2 оборота в секунду, как у настоящего броска).")]
+        [SerializeField] private float assistBackspin = 14f;
 
         [Header("Возврат на подставку")]
         [Tooltip("Сколько секунд мяч должен пролежать/прокатиться по полу, прежде чем вернуться.")]
@@ -96,6 +98,28 @@ namespace VRSports.Modes.Basketball
             yield return new WaitForFixedUpdate();
             // Медленно отпущенный мяч — не бросок, а просто «положили».
             ShotActive = _rb.linearVelocity.magnitude > 2f;
+            if (ShotActive) ApplyBackspinAssist();
+        }
+
+        /// <summary>
+        /// Помощь закрутке. Щелчок кистью с контроллером в руке почти не закручивает мяч,
+        /// а без обратного вращения он отскакивает от щита «зеркально» — назад, а не вниз в кольцо.
+        ///
+        /// Ось обратного вращения: axis = d × up (d — горизонтальное направление полёта).
+        /// Проверка: при полёте по +Z ось = (0,0,1)×(0,1,0) = (−1,0,0); верх мяча тогда
+        /// движется назад — это и есть backspin. Если игрок закрутил сам сильнее — не трогаем.
+        /// </summary>
+        private void ApplyBackspinAssist()
+        {
+            Vector3 d = _rb.linearVelocity;
+            d.y = 0f;
+            if (d.sqrMagnitude < 0.01f) return; // бросок строго вверх — направление не определено
+            Vector3 axis = Vector3.Cross(d.normalized, Vector3.up);
+
+            Vector3 w = _rb.angularVelocity;
+            float current = Vector3.Dot(w, axis);
+            if (current < assistBackspin)
+                _rb.angularVelocity = w + axis * (assistBackspin - current);
         }
 
         private void FixedUpdate()
