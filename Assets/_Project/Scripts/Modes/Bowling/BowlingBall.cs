@@ -28,9 +28,18 @@ namespace VRSports.Modes.Bowling
         [Tooltip("Макс. угловая скорость, рад/с (по умолчанию в Unity всего 7).")]
         [SerializeField] private float maxSpin = 40f;
 
+        [Header("Зоны трения дорожки")]
+        [SerializeField] private float oilEndZ = 13.2f;
+        [SerializeField] private float deckStartZ = 18.8f;
+        [SerializeField] private PhysicsMaterial approachMat;
+        [SerializeField] private PhysicsMaterial oilMat;
+        [SerializeField] private PhysicsMaterial dryMat;
+        [SerializeField] private PhysicsMaterial deckMat;
+
         /// <summary>Шар пересёк линию заступа после отпускания — бросок засчитан.</summary>
         public event Action Thrown;
 
+        private Collider _col;
         private Rigidbody _rb;
         private XRGrabInteractable _grab;
         private bool _armed; // отпущен, но ещё не пересёк линию заступа
@@ -44,8 +53,29 @@ namespace VRSports.Modes.Bowling
             foulLineZ = foulZ;
         }
 
+        /// <summary>
+        /// Трение по зонам. Дорожка — ОДИН сплошной коллайдер: на стыке отдельных коллайдеров
+        /// шар цепляется за ребро следующего и подпрыгивает (internal edge в PhysX).
+        /// Поэтому трение зоны меняем не у дорожки, а у самого шара — по его координате Z.
+        /// У дорожки трение 1.0 и режим Minimum, так что действует трение шара.
+        /// </summary>
+        public void SetupZones(float oilEnd, float deckStart, PhysicsMaterial approach, PhysicsMaterial oil,
+            PhysicsMaterial dry, PhysicsMaterial deck)
+        {
+            oilEndZ = oilEnd; deckStartZ = deckStart;
+            approachMat = approach; oilMat = oil; dryMat = dry; deckMat = deck;
+        }
+
+        private PhysicsMaterial ZoneMaterial(float z)
+        {
+            if (z < foulLineZ) return approachMat;
+            if (z < oilEndZ) return oilMat;
+            return z < deckStartZ ? dryMat : deckMat;
+        }
+
         private void Awake()
         {
+            _col = GetComponent<Collider>();
             _rb = GetComponent<Rigidbody>();
             _grab = GetComponent<XRGrabInteractable>();
             _rb.maxAngularVelocity = maxSpin;
@@ -89,6 +119,9 @@ namespace VRSports.Modes.Bowling
 
         private void FixedUpdate()
         {
+            var zoneMat = ZoneMaterial(transform.position.z);
+            if (zoneMat != null && _col.sharedMaterial != zoneMat) _col.sharedMaterial = zoneMat;
+
             if (_armed && !IsHeld && transform.position.z > foulLineZ)
             {
                 _armed = false;
