@@ -57,7 +57,7 @@ namespace VRSports.EditorTools
             _font = GetOrCreateFont();
 
             BuildHub();
-            BuildMode<BowlingMode>("Bowling", new Color(0.55f, 0.38f, 0.24f));
+            BuildMode<BowlingMode>("Bowling", new Color(0.55f, 0.38f, 0.24f), BowlingBuilder.Layout, BowlingBuilder.Build);
             BuildMode<BasketballMode>("Basketball", new Color(0.78f, 0.55f, 0.33f));
             BuildMode<ArcheryMode>("Archery", new Color(0.36f, 0.58f, 0.3f));
             BuildMode<BoxingMode>("Boxing", new Color(0.3f, 0.34f, 0.48f));
@@ -131,19 +131,31 @@ namespace VRSports.EditorTools
 
         // ---------------------------------------------------------------- сцена режима
 
-        private static void BuildMode<T>(string sceneName, Color floorColor) where T : SportModeBase
+        /// <summary>Где в сцене режима стоят пол и табло (у каждого вида спорта своё).</summary>
+        internal class ModeLayout
         {
+            public Vector3 FloorCenter = new Vector3(0, -0.05f, 0);
+            public Vector3 FloorSize = new Vector3(20, 0.1f, 20);
+            public Vector3 BoardPosition = new Vector3(0, 0, 4f);
+        }
+
+        private static void BuildMode<T>(string sceneName, Color floorColor, ModeLayout layout = null,
+            System.Action<T> buildContent = null) where T : SportModeBase
+        {
+            layout ??= new ModeLayout();
             var scene = NewScene();
 
-            var floor = Prim(PrimitiveType.Cube, "Floor", null, new Vector3(0, -0.05f, 0), new Vector3(20, 0.1f, 20),
+            var floor = Prim(PrimitiveType.Cube, "Floor", null, layout.FloorCenter, layout.FloorSize,
                 Mat("Floor_" + sceneName, floorColor));
             MakeTeleportArea(floor);
 
             var mode = new GameObject("Mode").AddComponent<T>();
 
-            // Табло впереди-сверху.
+            // Табло. Если оно сбоку — разворачиваем лицом к игроку.
             var board = new GameObject("ScoreBoard").transform;
-            board.position = new Vector3(0, 0, 4f);
+            var flat = new Vector3(layout.BoardPosition.x, 0, layout.BoardPosition.z);
+            board.SetPositionAndRotation(layout.BoardPosition,
+                Mathf.Abs(flat.x) < 0.01f ? Quaternion.identity : Quaternion.LookRotation(flat.normalized));
             Prim(PrimitiveType.Cube, "Panel", board, new Vector3(0, 2.2f, 0), new Vector3(2.4f, 1.3f, 0.05f),
                 Mat("Panel_Dark", new Color(0.12f, 0.14f, 0.2f)));
             const float z = -0.04f;
@@ -166,6 +178,9 @@ namespace VRSports.EditorTools
             var start = Button("StartButton", stand, new Vector3(-0.12f, 0.84f, 0), "Старт", new Color(0.3f, 0.8f, 0.4f));
             var hub = Button("HubButton", stand, new Vector3(0.12f, 0.84f, 0), "В хаб", new Color(0.95f, 0.6f, 0.25f));
             stand.gameObject.AddComponent<ModeControls>().Setup(mode, start, hub);
+
+            // «Начинка» конкретного вида спорта (дорожка, кольцо, мишени...).
+            buildContent?.Invoke(mode);
 
             Save(scene, sceneName);
         }
@@ -224,7 +239,7 @@ namespace VRSports.EditorTools
 
         // ---------------------------------------------------------------- строительные блоки
 
-        private static GameObject Prim(PrimitiveType type, string name, Transform parent, Vector3 localPos,
+        internal static GameObject Prim(PrimitiveType type, string name, Transform parent, Vector3 localPos,
             Vector3 scale, Material mat)
         {
             var go = GameObject.CreatePrimitive(type);
@@ -251,7 +266,7 @@ namespace VRSports.EditorTools
             area.interactionLayers = InteractionLayerMask.GetMask("Teleport");
         }
 
-        private static TextMeshPro Text(string name, Transform parent, Vector3 localPos, string content, float size,
+        internal static TextMeshPro Text(string name, Transform parent, Vector3 localPos, string content, float size,
             Vector2 rect, Color color)
         {
             var go = new GameObject(name);
@@ -268,7 +283,7 @@ namespace VRSports.EditorTools
             return t;
         }
 
-        private static VRButton Button(string name, Transform parent, Vector3 localPos, string label, Color color)
+        internal static VRButton Button(string name, Transform parent, Vector3 localPos, string label, Color color)
         {
             var root = new GameObject(name);
             root.transform.SetParent(parent, false);
@@ -299,7 +314,51 @@ namespace VRSports.EditorTools
 
         // ---------------------------------------------------------------- ассеты
 
-        private static Material Mat(string name, Color color)
+        /// <summary>
+        /// Физический материал: трение и упругость поверхности.
+        /// combine — как объединять с материалом второго тела (Minimum: берётся меньшее трение).
+        /// </summary>
+        internal static PhysicsMaterial PhysMat(string name, float friction, float bounciness,
+            PhysicsMaterialCombine combine = PhysicsMaterialCombine.Average)
+        {
+            string path = $"{MatDir}/Physics/{name}.asset";
+            EnsureFolder($"{MatDir}/Physics");
+            var pm = AssetDatabase.LoadAssetAtPath<PhysicsMaterial>(path);
+            if (pm == null)
+            {
+                pm = new PhysicsMaterial(name);
+                AssetDatabase.CreateAsset(pm, path);
+            }
+            pm.dynamicFriction = friction;
+            pm.staticFriction = friction;
+            pm.bounciness = bounciness;
+            pm.frictionCombine = combine;
+            pm.bounceCombine = PhysicsMaterialCombine.Minimum;
+            EditorUtility.SetDirty(pm);
+            return pm;
+        }
+
+        /// <summary>Меш из FBX, сгенерированного Blender-скриптом (Tools/Blender).</summary>
+        internal static Mesh LoadMesh(string fbxPath)
+        {
+            foreach (var o in AssetDatabase.LoadAllAssetsAtPath(fbxPath))
+                if (o is Mesh m) return m;
+            Debug.LogError($"[SceneBuilder] Нет меша в {fbxPath}. Запустите Blender-скрипт из Tools/Blender.");
+            return null;
+        }
+
+        /// <summary>Объект с мешем из FBX и нашими материалами по слотам.</summary>
+        internal static GameObject MeshObject(string name, Transform parent, Vector3 pos, Mesh mesh, params Material[] mats)
+        {
+            var go = new GameObject(name);
+            go.transform.SetParent(parent, false);
+            go.transform.localPosition = pos;
+            go.AddComponent<MeshFilter>().sharedMesh = mesh;
+            go.AddComponent<MeshRenderer>().sharedMaterials = mats;
+            return go;
+        }
+
+        internal static Material Mat(string name, Color color)
         {
             string path = $"{MatDir}/{name}.mat";
             var mat = AssetDatabase.LoadAssetAtPath<Material>(path);
@@ -371,7 +430,7 @@ namespace VRSports.EditorTools
             return fa;
         }
 
-        private static void EnsureFolder(string path)
+        internal static void EnsureFolder(string path)
         {
             if (AssetDatabase.IsValidFolder(path)) return;
             var parent = Path.GetDirectoryName(path)?.Replace('\\', '/');
