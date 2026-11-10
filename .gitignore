@@ -1,0 +1,42 @@
+# Unity: генерируемые папки (восстанавливаются из Assets/ и Packages/)
+/[Ll]ibrary/
+/[Tt]emp/
+/[Oo]bj/
+/[Bb]uild/
+/[Bb]uilds/
+/[Ll]ogs/
+/[Uu]ser[Ss]ettings/
+/[Mm]emoryCaptures/
+/[Rr]ecordings/
+
+# Файлы IDE (генерирует Unity)
+.vs/
+.vscode/
+.idea/
+*.csproj
+*.sln
+*.suo
+*.user
+*.userprefs
+*.pidb
+*.booproj
+*.svd
+*.pdb
+*.mdb
+*.opendb
+*.VC.db
+
+# Сборки
+*.apk
+*.aab
+*.unitypackage
+*.app
+crashlytics-build.properties
+
+# Blender: резервные копии
+*.blend1
+*.blend2
+
+# Прочее
+.DS_Store
+Thumbs.db
