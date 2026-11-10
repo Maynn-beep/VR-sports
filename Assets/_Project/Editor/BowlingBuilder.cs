@@ -51,19 +51,30 @@ namespace VRSports.EditorTools
             var darkMat = Mat("Panel_Dark", new Color(0.12f, 0.14f, 0.2f));
             var redMat = Mat("Foul_Red", new Color(0.85f, 0.15f, 0.15f));
 
-            // Трение: у шара 1.0 и режим Minimum, поэтому реальное трение пары шар-дорожка
-            // равно трению дорожки. Так трение задаётся одним числом на участке.
-            var oilPhys = PhysMat("Lane_Oil", 0.04f, 0f, PhysicsMaterialCombine.Minimum);
-            var dryPhys = PhysMat("Lane_Dry", 0.22f, 0f, PhysicsMaterialCombine.Minimum);
-            var deckPhys = PhysMat("Pin_Deck", 0.35f, 0f, PhysicsMaterialCombine.Minimum);
+            // Трение. У дорожки 1.0 и режим Minimum: действует трение ШАРА, а шар меняет
+            // свой материал по зонам (BowlingBall.ZoneMaterial). Кегли на дорожке — 0.35.
+            var lanePhys = PhysMat("Lane_Surface", 1f, 0f, PhysicsMaterialCombine.Minimum);
+            var ballApproach = PhysMat("Ball_Approach", 0.5f, 0.05f, PhysicsMaterialCombine.Minimum);
+            var ballOil = PhysMat("Ball_Oil", 0.04f, 0.05f, PhysicsMaterialCombine.Minimum);
+            var ballDry = PhysMat("Ball_Dry", 0.22f, 0.05f, PhysicsMaterialCombine.Minimum);
+            var ballDeck = PhysMat("Ball_Deck", 0.35f, 0.05f, PhysicsMaterialCombine.Minimum);
             var wallPhys = PhysMat("Lane_Wall", 0.3f, 0.2f);
-            var ballPhys = PhysMat("Ball", 1f, 0.05f, PhysicsMaterialCombine.Minimum);
             var pinPhys = PhysMat("Pin", 0.35f, 0.3f);
 
-            // ---------- дорожка: три участка
-            LaneSegment(root, "Lane_Oil", FoulZ, OilEndZ, oilMat, oilPhys);
-            LaneSegment(root, "Lane_Dry", OilEndZ, DeckStartZ, dryMat, dryPhys);
-            LaneSegment(root, "Pin_Deck", DeckStartZ, DeckEndZ, dryMat, deckPhys);
+            // ---------- дорожка: три участка — только визуал (разный цвет)
+            LaneSegment(root, "Lane_Oil", FoulZ, OilEndZ, oilMat);
+            LaneSegment(root, "Lane_Dry", OilEndZ, DeckStartZ, dryMat);
+            LaneSegment(root, "Pin_Deck", DeckStartZ, DeckEndZ, dryMat);
+
+            // ...а физически дорожка — ОДИН сплошной коллайдер. Он начинается ещё в зоне разбега,
+            // чтобы на пути шара не было ни одного стыка (на стыках PhysX даёт подскок).
+            float surfStart = Layout.FloorCenter.z - Layout.FloorSize.z / 2f;
+            var surface = new GameObject("Lane_Collider");
+            surface.transform.SetParent(root, false);
+            surface.transform.localPosition = new Vector3(0, -0.05f, (surfStart + DeckEndZ) / 2f);
+            var surfCol = surface.AddComponent<BoxCollider>();
+            surfCol.size = new Vector3(LaneHalfW * 2, 0.1f, DeckEndZ - surfStart);
+            surfCol.sharedMaterial = lanePhys;
 
             // Жёлоба — ниже дорожки; шар, попавший туда, доезжает до ямы мимо кеглей.
             float gutterX = LaneHalfW + GutterW / 2f;
@@ -164,7 +175,7 @@ namespace VRSports.EditorTools
                 Mat("Ball_Body", new Color(0.25f, 0.3f, 0.85f)), Mat("Ball_Holes", new Color(0.03f, 0.03f, 0.05f)));
             var sphere = ballGo.AddComponent<SphereCollider>();
             sphere.radius = 0.109f;
-            sphere.sharedMaterial = ballPhys;
+            sphere.sharedMaterial = ballApproach;
 
             var ballRb = ballGo.AddComponent<Rigidbody>();
             ballRb.mass = 6.5f;                 // ~14 фунтов
@@ -184,6 +195,7 @@ namespace VRSports.EditorTools
 
             var ball = ballGo.AddComponent<BowlingBall>();
             ball.Setup(rackPoint, FoulZ);
+            ball.SetupZones(OilEndZ, DeckStartZ, ballApproach, ballOil, ballDry, ballDeck);
 
             // ---------- табло фреймов над дорожкой
             var sheetRoot = new GameObject("FrameSheet").transform;
@@ -196,11 +208,11 @@ namespace VRSports.EditorTools
             mode.Setup(ball, pins, sheet);
         }
 
-        private static void LaneSegment(Transform root, string name, float z0, float z1, Material mat, PhysicsMaterial phys)
+        private static void LaneSegment(Transform root, string name, float z0, float z1, Material mat)
         {
             var seg = Prim(PrimitiveType.Cube, name, root, new Vector3(0, -0.05f, (z0 + z1) / 2f),
                 new Vector3(LaneHalfW * 2, 0.1f, z1 - z0), mat);
-            seg.GetComponent<Collider>().sharedMaterial = phys;
+            Object.DestroyImmediate(seg.GetComponent<Collider>()); // физику даёт общий Lane_Collider
         }
 
         private static void Decal(Transform root, string name, Vector3 pos, Vector3 scale, Material mat, PrimitiveType type)

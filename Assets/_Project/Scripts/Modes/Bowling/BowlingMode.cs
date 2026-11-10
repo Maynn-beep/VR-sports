@@ -39,8 +39,15 @@ namespace VRSports.Modes.Bowling
             ball = b; pins = p; sheet = s;
         }
 
-        private void OnEnable() => ball.Thrown += OnBallThrown;
-        private void OnDisable() => ball.Thrown -= OnBallThrown;
+        private void OnEnable()
+        {
+            if (ball != null) ball.Thrown += OnBallThrown;
+        }
+
+        private void OnDisable()
+        {
+            if (ball != null) ball.Thrown -= OnBallThrown;
+        }
 
         private void Start()
         {
