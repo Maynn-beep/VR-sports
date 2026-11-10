@@ -86,7 +86,7 @@ namespace VRSports.EditorTools
             var title = new GameObject("Title").transform;
             title.position = new Vector3(0, 0, 5.5f);
             Text("Name", title, new Vector3(0, 3.2f, 0), "VR SPORTS", 8f, new Vector2(8, 1.5f), new Color(0.15f, 0.2f, 0.35f));
-            Text("Subtitle", title, new Vector3(0, 2.5f, 0), "Сборник мини-спортивных симуляторов", 3f,
+            Text("Subtitle", title, new Vector3(0, 2.5f, 0), "Сборник мини-спортивных симуляторов", 2f,
                 new Vector2(8, 1), new Color(0.25f, 0.3f, 0.45f));
 
             // Станции режимов — дугой перед игроком.
@@ -96,7 +96,7 @@ namespace VRSports.EditorTools
                 new Color(0.35f, 0.7f, 0.4f), new Color(0.35f, 0.5f, 0.9f)
             };
             int n = SportCatalog.All.Length;
-            const float radius = 2.5f, arc = 110f;
+            const float radius = 3f, arc = 120f;
             for (int i = 0; i < n; i++)
             {
                 float angle = Mathf.Lerp(-arc / 2, arc / 2, n == 1 ? 0.5f : i / (float)(n - 1)) * Mathf.Deg2Rad;
@@ -118,10 +118,10 @@ namespace VRSports.EditorTools
                 Mat("Panel_Dark", new Color(0.12f, 0.14f, 0.2f)));
 
             // Текст стоит перед табличкой со стороны игрока (локальная −Z).
-            var t = Text("Title", root, new Vector3(0, 1.88f, 0.07f), entry.Title, 2.2f, new Vector2(1.25f, 0.3f), Color.white);
-            var d = Text("Description", root, new Vector3(0, 1.6f, 0.07f), entry.Description, 1.1f, new Vector2(1.25f, 0.3f),
+            var t = Text("Title", root, new Vector3(0, 1.9f, 0.07f), entry.Title, 1.1f, new Vector2(1.25f, 0.2f), Color.white);
+            var d = Text("Description", root, new Vector3(0, 1.64f, 0.07f), entry.Description, 0.55f, new Vector2(1.25f, 0.25f),
                 new Color(0.8f, 0.85f, 0.95f));
-            var b = Text("Best", root, new Vector3(0, 1.35f, 0.07f), "", 1.1f, new Vector2(1.25f, 0.15f),
+            var b = Text("Best", root, new Vector3(0, 1.38f, 0.07f), "", 0.55f, new Vector2(1.25f, 0.1f),
                 new Color(1f, 0.85f, 0.4f));
 
             var play = Button("PlayButton", root, new Vector3(0, 0.9f, 0), "Играть", new Color(0.3f, 0.8f, 0.4f));
@@ -147,13 +147,13 @@ namespace VRSports.EditorTools
             Prim(PrimitiveType.Cube, "Panel", board, new Vector3(0, 2.2f, 0), new Vector3(2.4f, 1.3f, 0.05f),
                 Mat("Panel_Dark", new Color(0.12f, 0.14f, 0.2f)));
             const float z = -0.04f;
-            var title = Text("Title", board, new Vector3(0, 2.65f, z), "", 3f, new Vector2(2.3f, 0.3f), Color.white);
-            var score = Text("Score", board, new Vector3(-0.55f, 2.25f, z), "", 2.6f, new Vector2(1.2f, 0.3f),
+            var title = Text("Title", board, new Vector3(0, 2.65f, z), "", 1.6f, new Vector2(2.3f, 0.3f), Color.white);
+            var score = Text("Score", board, new Vector3(-0.55f, 2.25f, z), "", 1.4f, new Vector2(1.2f, 0.3f),
                 new Color(0.5f, 1f, 0.6f));
-            var timer = Text("Timer", board, new Vector3(0.7f, 2.25f, z), "", 2.6f, new Vector2(0.8f, 0.3f), Color.white);
-            var best = Text("Best", board, new Vector3(0, 1.95f, z), "", 1.6f, new Vector2(2.3f, 0.2f),
+            var timer = Text("Timer", board, new Vector3(0.7f, 2.25f, z), "", 1.4f, new Vector2(0.8f, 0.3f), Color.white);
+            var best = Text("Best", board, new Vector3(0, 1.95f, z), "", 0.9f, new Vector2(2.3f, 0.2f),
                 new Color(1f, 0.85f, 0.4f));
-            var msg = Text("Message", board, new Vector3(0, 1.72f, z), "", 2f, new Vector2(2.3f, 0.25f),
+            var msg = Text("Message", board, new Vector3(0, 1.72f, z), "", 1.1f, new Vector2(2.3f, 0.25f),
                 new Color(0.75f, 0.85f, 1f));
             board.gameObject.AddComponent<ScoreBoard>().Setup(mode, title, score, timer, best, msg);
 
@@ -286,7 +286,7 @@ namespace VRSports.EditorTools
             var col = cap.AddComponent<BoxCollider>();
             col.size = new Vector3(1f, 2.5f, 1f); // чуть выше самой шляпки — легче попасть рукой
 
-            Text("Label", root.transform, new Vector3(0, 0.12f, 0), label, 1.2f, new Vector2(0.4f, 0.12f), Color.white);
+            Text("Label", root.transform, new Vector3(0, 0.12f, 0), label, 0.6f, new Vector2(0.4f, 0.12f), Color.white);
 
             root.AddComponent<XRSimpleInteractable>();
             var button = root.AddComponent<VRButton>();
