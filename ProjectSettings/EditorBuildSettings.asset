@@ -6,8 +6,20 @@ EditorBuildSettings:
   serializedVersion: 2
   m_Scenes:
   - enabled: 1
-    path: Assets/Scenes/SampleScene.unity
-    guid: 55daccc09a3b69647bbab145b54a3ab3
+    path: Assets/_Project/Scenes/Hub.unity
+    guid: 48ca95d1274e11f4a83f710b1c144314
+  - enabled: 1
+    path: Assets/_Project/Scenes/Bowling.unity
+    guid: f900d0a4278e37147991c377430e7342
+  - enabled: 1
+    path: Assets/_Project/Scenes/Basketball.unity
+    guid: 326a2310b8ffee44ab253a083f1893a7
+  - enabled: 1
+    path: Assets/_Project/Scenes/Archery.unity
+    guid: b3f355a42f63cae458005cd35621fc87
+  - enabled: 1
+    path: Assets/_Project/Scenes/Boxing.unity
+    guid: 2dccebcd7418c224fbc3fe7811159c65
   m_configObjects:
     Unity.XR.Oculus.Settings: {fileID: 11400000, guid: bfa1182bd221b4ca89619141f66f1260, type: 2}
     Unity.XR.WindowsMR.Settings: {fileID: 11400000, guid: dc5a169419fa04987b057f65238cf3ba, type: 2}
