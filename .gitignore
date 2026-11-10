@@ -40,3 +40,6 @@ crashlytics-build.properties
 # Прочее
 .DS_Store
 Thumbs.db
+
+# Локальная настройка подключения ИИ к редактору (содержит пути пользователя)
+.mcp.json
