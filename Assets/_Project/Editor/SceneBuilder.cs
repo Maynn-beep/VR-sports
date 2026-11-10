@@ -58,7 +58,7 @@ namespace VRSports.EditorTools
 
             BuildHub();
             BuildMode<BowlingMode>("Bowling", new Color(0.55f, 0.38f, 0.24f), BowlingBuilder.Layout, BowlingBuilder.Build);
-            BuildMode<BasketballMode>("Basketball", new Color(0.78f, 0.55f, 0.33f));
+            BuildMode<BasketballMode>("Basketball", new Color(0.78f, 0.55f, 0.33f), BasketballBuilder.Layout, BasketballBuilder.Build);
             BuildMode<ArcheryMode>("Archery", new Color(0.36f, 0.58f, 0.3f));
             BuildMode<BoxingMode>("Boxing", new Color(0.3f, 0.34f, 0.48f));
 
@@ -319,7 +319,8 @@ namespace VRSports.EditorTools
         /// combine — как объединять с материалом второго тела (Minimum: берётся меньшее трение).
         /// </summary>
         internal static PhysicsMaterial PhysMat(string name, float friction, float bounciness,
-            PhysicsMaterialCombine combine = PhysicsMaterialCombine.Average)
+            PhysicsMaterialCombine combine = PhysicsMaterialCombine.Average,
+            PhysicsMaterialCombine bounceCombine = PhysicsMaterialCombine.Minimum)
         {
             string path = $"{MatDir}/Physics/{name}.asset";
             EnsureFolder($"{MatDir}/Physics");
@@ -333,7 +334,7 @@ namespace VRSports.EditorTools
             pm.staticFriction = friction;
             pm.bounciness = bounciness;
             pm.frictionCombine = combine;
-            pm.bounceCombine = PhysicsMaterialCombine.Minimum;
+            pm.bounceCombine = bounceCombine;
             EditorUtility.SetDirty(pm);
             return pm;
         }
