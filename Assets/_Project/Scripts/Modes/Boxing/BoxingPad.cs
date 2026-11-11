@@ -119,6 +119,7 @@ namespace VRSports.Modes.Boxing
         private void SetColor(Color c, float emission)
         {
             if (faceRenderer == null) return;
+            _mpb ??= new MaterialPropertyBlock(); // на случай вызова до Awake
             faceRenderer.GetPropertyBlock(_mpb, faceSlot);
             _mpb.SetColor(BaseColorId, c);
             _mpb.SetColor(EmissionId, c * emission);
