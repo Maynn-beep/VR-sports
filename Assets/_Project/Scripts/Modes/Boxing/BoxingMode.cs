@@ -18,7 +18,7 @@ namespace VRSports.Modes.Boxing
     /// </summary>
     public class BoxingMode : SportModeBase
     {
-        [SerializeField] private BoxingPad[] pads;          // 0 — левый верх, 1 — правый верх, 2 — левый корпус, 3 — правый корпус, 4 — центр
+        [SerializeField] private BoxingPad[] pads;          // прямые, хуки и апперкоты (вид — в BoxingPad.Kind)
         [SerializeField] private Transform padRig;          // поднимается под рост игрока
         [SerializeField] private DodgeBar dodgeBar;
         [SerializeField] private TMP_Text comboText;
@@ -98,7 +98,7 @@ namespace VRSports.Modes.Boxing
                 _round = round;
                 if (round > 0)
                 {
-                    ShowMessage(round == 1 ? "Раунд 2 — тренажёр бьёт в ответ, ныряйте!" : "Раунд 3 — финальный, максимальный темп!");
+                    ShowMessage(round == 1 ? "Раунд 2 — хуки! Тренажёр бьёт в ответ, ныряйте" : "Раунд 3 — апперкоты и максимальный темп!");
                     Haptics.PulseBoth(0.6f, 0.25f);
                 }
                 _nextDodge = Time.time + 3f;
@@ -130,27 +130,40 @@ namespace VRSports.Modes.Boxing
         {
             yield return new WaitForSeconds(Gap[_round]);
             int len = ComboLen[_round] == 1 ? 1 : Random.Range(ComboLen[_round] - 1, ComboLen[_round] + 1);
-            int last = -1;
+            BoxingPad last = null;
             for (int i = 0; i < len; i++)
             {
-                int idx;
-                do idx = Random.Range(0, pads.Length); while (idx == last);
-                last = idx;
-                var pad = pads[idx];
-                pad.Light(HandFor(idx), Window[_round]);
+                BoxingPad pad;
+                do pad = pads[Random.Range(0, pads.Length)]; while (pad == last || !Allowed(pad.Kind));
+                last = pad;
+                pad.Light(HandFor(pad), Window[_round] * (pad.Kind == PadKind.Straight ? 1f : 1.15f));
                 while (pad.IsLit) yield return null; // ждём удар или истечение окна
                 yield return new WaitForSeconds(0.12f);
             }
             _sequence = null;
         }
 
-        /// <summary>Левые лапы — левой рукой, правые — правой, центральная — любой из двух (случайно).</summary>
-        private static Hand HandFor(int padIndex) => padIndex switch
+        /// <summary>Прогрессия: раунд 1 — только прямые, раунд 2 — + хуки, раунд 3 — + апперкоты.</summary>
+        private bool Allowed(PadKind kind) => kind switch
         {
-            0 or 2 => Hand.Left,
-            1 or 3 => Hand.Right,
-            _ => Random.value < 0.5f ? Hand.Left : Hand.Right
+            PadKind.Straight => true,
+            PadKind.Hook => _round >= 1,
+            _ => _round >= 2
         };
+
+        /// <summary>
+        /// Какой рукой бить. Прямые удары — любой рукой в любую лапу (в т.ч. «через себя»: красная слева,
+        /// синяя справа). Хук и апперкот — только «своей» рукой: правым хуком по лапе слева
+        /// анатомически не ударить.
+        /// </summary>
+        private static Hand HandFor(BoxingPad pad)
+        {
+            if (pad.Kind != PadKind.Straight && !pad.AnyHand) return pad.NaturalHand;
+            if (pad.AnyHand) return Random.value < 0.5f ? Hand.Left : Hand.Right;
+            return Random.value < 0.6f ? pad.NaturalHand : Other(pad.NaturalHand); // 40% — кросс
+        }
+
+        private static Hand Other(Hand h) => h == Hand.Left ? Hand.Right : Hand.Left;
 
         private void StopSequence()
         {
@@ -176,10 +189,13 @@ namespace VRSports.Modes.Boxing
 
             int rating = speed >= greatSpeed ? 3 : speed >= goodSpeed ? 2 : 1;
             string label = rating == 3 ? "ОТЛИЧНО!" : rating == 2 ? "Хорошо" : "Слабо";
+            // Хук и апперкот сложнее прямого — +1 к оценке.
+            int bonus = pad.Kind == PadKind.Straight ? 0 : 1;
+            string punch = pad.Kind switch { PadKind.Hook => "Хук", PadKind.Uppercut => "Апперкот", _ => "Прямой" };
             _combo++;
-            int pts = rating * Multiplier;
+            int pts = (rating + bonus) * Multiplier;
             AddScore(pts);
-            ShowMessage($"{label} {speed:F1} м/с  +{pts}");
+            ShowMessage($"{punch}: {label} {speed:F1} м/с  +{pts}");
             if (_combo % 8 == 0 && Multiplier <= 4) Haptics.PulseBoth(0.5f, 0.15f);
             UpdateComboText();
         }
