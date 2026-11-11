@@ -30,8 +30,11 @@ namespace VRSports.Modes.Archery
         [SerializeField] private TMP_Text ammoText;
 
         [Header("Физика лука")]
-        [SerializeField] private float maxDraw = 0.6f;       // м
-        [SerializeField] private float maxArrowSpeed = 50f;  // м/с при полном натяжении
+        [Tooltip("Макс. натяжение, м. Меньше длины стрелы (0.85 м), чтобы наконечник не уходил за рукоять.")]
+        [SerializeField] private float maxDraw = 0.55f;
+        [Tooltip("Скорость при полном натяжении, м/с. 26.5 м/с — под 45° стрела летит ~64 м (чуть дальше края поля 60 м) " +
+                 "с учётом сопротивления воздуха (подобрано численным моделированием).")]
+        [SerializeField] private float maxArrowSpeed = 26.5f;
         [SerializeField] private float minDrawToShoot = 0.08f;
 
         /// <summary>Сколько стрел осталось. −1 — без ограничения (тренировка).</summary>
@@ -107,20 +110,41 @@ namespace VRSports.Modes.Archery
 
         private void Shoot(IXRSelectInteractor hand)
         {
+            Release(_nocked, Draw);
+            Haptics.Pulse(hand.handedness, 0.5f, 0.06f);
+            if (_grab.firstInteractorSelecting is IXRInteractor bowHand)
+                Haptics.Pulse(bowHand.handedness, 0.8f, 0.12f); // отдача в руку с луком
+        }
+
+        private void Release(Arrow arrow, float draw)
+        {
             // Скорость пропорциональна натяжению (модель пружины, см. описание класса).
-            float speed = maxArrowSpeed * (Draw / maxDraw);
-            var arrow = _nocked;
+            float speed = maxArrowSpeed * (draw / maxDraw);
             arrow.transform.SetParent(null, true);
             arrow.Launch(transform.forward * speed);
 
             if (ArrowsLeft > 0) ArrowsLeft--;
             UpdateAmmoText();
             ArrowShot?.Invoke(arrow);
-
             _releaseAnim = 1f;
-            Haptics.Pulse(hand.handedness, 0.5f, 0.06f);
-            if (_grab.firstInteractorSelecting is IXRInteractor bowHand)
-                Haptics.Pulse(bowHand.handedness, 0.8f, 0.12f); // отдача в руку с луком
+        }
+
+        /// <summary>
+        /// Выстрел без рук — для автоматических проверок в редакторе (через Unity MCP).
+        /// Идёт по тому же пути, что и настоящий: Release → событие ArrowShot → подсчёт в режиме.
+        /// </summary>
+        public Arrow TestShoot(float draw01, Quaternion aim)
+        {
+            if (ArrowsLeft == 0) return null;
+            transform.rotation = aim;
+            var arrow = Instantiate(arrowTemplate, transform);
+            arrow.gameObject.SetActive(true);
+            arrow.name = "Arrow";
+            float draw = Mathf.Clamp01(draw01) * maxDraw;
+            arrow.transform.SetPositionAndRotation(transform.TransformPoint(stringRest.localPosition - Vector3.forward * draw),
+                transform.rotation);
+            Release(arrow, draw);
+            return arrow;
         }
 
         private void Update()
