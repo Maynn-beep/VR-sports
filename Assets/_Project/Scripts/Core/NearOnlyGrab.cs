@@ -39,6 +39,12 @@ namespace VRSports.Core
 
         public bool Process(IXRSelectInteractor interactor, IXRSelectInteractable interactable)
         {
+            // ВАЖНО: XRI проверяет фильтры не только при захвате, но и КАЖДЫЙ КАДР удержания.
+            // Рука, которая уже держит предмет, может отойти от его коллайдера (тетиву тянут на 55 см) —
+            // без этой проверки XRI отпускал бы предмет, и лук «стрелял сам».
+            foreach (var holder in _interactable.interactorsSelecting)
+                if (holder == interactor) return true;
+
             Vector3 hand = interactor.transform.position;
             float maxSqr = maxDistance * maxDistance;
             foreach (var col in _interactable.colliders)

@@ -11,7 +11,7 @@ namespace VRSports.Modes.Archery
     {
         [SerializeField] private Transform flag;   // поворотная часть (ось Z — вдоль полотнища)
         [SerializeField] private TMP_Text label;
-        [SerializeField] private float maxWind = 6f;
+        [SerializeField] private float maxWind = 3f;
 
         public void Setup(Transform f, TMP_Text l)
         {

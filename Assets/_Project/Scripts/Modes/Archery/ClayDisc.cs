@@ -15,8 +15,9 @@ namespace VRSports.Modes.Archery
     {
         public static readonly List<ClayDisc> Active = new List<ClayDisc>();
 
-        [Tooltip("Радиус зоны попадания. Реальный диск — 5.5 см; берём больше, иначе попасть почти невозможно.")]
-        [SerializeField] private float hitRadius = 0.16f;
+        [Tooltip("Радиус зоны попадания. Диск увеличен до 22 см (×2 к реальному), зона — 30 см: " +
+                 "в VR по настоящей 11-сантиметровой тарелочке стрелой попасть практически невозможно.")]
+        [SerializeField] private float hitRadius = 0.3f;
         [SerializeField] private float gravityScale = 0.45f;
         [SerializeField] private float spin = 900f; // град/с — визуальное вращение
         [SerializeField] private ParticleSystem shatterFx;

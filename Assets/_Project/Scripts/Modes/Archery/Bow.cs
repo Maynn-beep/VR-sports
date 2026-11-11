@@ -167,8 +167,9 @@ namespace VRSports.Modes.Archery
                 DrawHaptics();
             }
 
+            // Хвостовик (и его коллайдер) всегда там, где тетива: при натяжении — едет за рукой.
             Vector3 nockWorld = transform.TransformPoint(nockLocal);
-            if (_drawHand == null) nock.transform.position = nockWorld;
+            nock.transform.position = nockWorld;
             if (_nocked != null)
             {
                 _nocked.transform.SetPositionAndRotation(nockWorld, transform.rotation);

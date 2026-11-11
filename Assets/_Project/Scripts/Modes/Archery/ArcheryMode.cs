@@ -10,9 +10,9 @@ namespace VRSports.Modes.Archery
     /// ограниченный запас стрел; волна кончается, когда все стрелы выпущены и упали.
     ///
     ///   1. Разминка     — 3 неподвижные мишени на 12/18/25 м, без ветра.
-    ///   2. Движение     — мишени ездят, слабый ветер.
-    ///   3. Тарелочки    — летящие диски, ветер сильнее.
-    ///   4. Финал        — движущиеся мишени + тарелочки, сильный ветер.
+    ///   2. Движение     — мишени ездят, ветер 1.5 м/с.
+    ///   3. Тарелочки    — летящие диски, ветер 2 м/с.
+    ///   4. Финал        — движущиеся мишени + тарелочки, ветер 2.5 м/с.
     ///
     /// Очки: кольцо (1–10) + бонус за дальность ⌊расстояние / 10 м⌋; тарелочка — 15.
     /// </summary>
@@ -48,9 +48,9 @@ namespace VRSports.Modes.Archery
                 Spots = new[] { new TargetSpot(0f, 12f), new TargetSpot(-3f, 18f), new TargetSpot(3.5f, 25f) } },
             new Wave { Name = "Движущиеся мишени", Arrows = 6, Wind = 1.5f,
                 Spots = new[] { new TargetSpot(0f, 14f, 3f, 0.9f), new TargetSpot(0f, 22f, 4f, 0.6f), new TargetSpot(-4f, 30f) } },
-            new Wave { Name = "Тарелочки", Arrows = 8, Wind = 2.5f, Discs = true,
+            new Wave { Name = "Тарелочки", Arrows = 8, Wind = 2f, Discs = true,
                 Spots = new TargetSpot[0] },
-            new Wave { Name = "Финал", Arrows = 10, Wind = 4f, Discs = true,
+            new Wave { Name = "Финал", Arrows = 10, Wind = 2.5f, Discs = true,
                 Spots = new[] { new TargetSpot(0f, 16f, 3.5f, 1.2f), new TargetSpot(0f, 26f, 4.5f, 0.8f) } },
         };
 
