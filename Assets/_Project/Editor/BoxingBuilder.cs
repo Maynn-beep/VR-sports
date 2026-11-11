@@ -37,18 +37,19 @@ namespace VRSports.EditorTools
         // Ориентация лапы задаёт вид удара: ось Z лапы = направление, в котором должен лететь кулак.
         private static readonly PadDef[] Pads =
         {
-            // Прямые: лицом к игроку, кулак летит вперёд.
-            new PadDef(new Vector3(-0.17f, 0.0f, 0.58f), Vector3.forward, PadKind.Straight, Hand.Left),
-            new PadDef(new Vector3(0.17f, 0.0f, 0.58f), Vector3.forward, PadKind.Straight, Hand.Right),
-            new PadDef(new Vector3(-0.2f, -0.38f, 0.5f), Vector3.forward, PadKind.Straight, Hand.Left),
-            new PadDef(new Vector3(0.2f, -0.38f, 0.5f), Vector3.forward, PadKind.Straight, Hand.Right),
-            new PadDef(new Vector3(0f, -0.17f, 0.62f), Vector3.forward, PadKind.Straight, Hand.Left, any: true),
-            // Хуки: сбоку, лицом наружу — кулак приходит по дуге сбоку к центру.
-            new PadDef(new Vector3(-0.3f, -0.02f, 0.34f), new Vector3(1f, 0f, 0.35f), PadKind.Hook, Hand.Left),
-            new PadDef(new Vector3(0.3f, -0.02f, 0.34f), new Vector3(-1f, 0f, 0.35f), PadKind.Hook, Hand.Right),
-            // Апперкоты: внизу перед подбородком, лицом вниз — кулак идёт снизу вверх.
-            new PadDef(new Vector3(-0.12f, -0.3f, 0.34f), new Vector3(0f, 1f, 0.25f), PadKind.Uppercut, Hand.Left),
-            new PadDef(new Vector3(0.12f, -0.3f, 0.34f), new Vector3(0f, 1f, 0.25f), PadKind.Uppercut, Hand.Right),
+            // Прямые: лицом к игроку, кулак летит вперёд. Шаг между центрами лап ≥ 30 см.
+            new PadDef(new Vector3(-0.25f, -0.03f, 0.58f), Vector3.forward, PadKind.Straight, Hand.Left),
+            new PadDef(new Vector3(0.25f, -0.03f, 0.58f), Vector3.forward, PadKind.Straight, Hand.Right),
+            new PadDef(new Vector3(-0.28f, -0.45f, 0.5f), Vector3.forward, PadKind.Straight, Hand.Left),
+            new PadDef(new Vector3(0.28f, -0.45f, 0.5f), Vector3.forward, PadKind.Straight, Hand.Right),
+            new PadDef(new Vector3(0f, -0.24f, 0.64f), Vector3.forward, PadKind.Straight, Hand.Left, any: true),
+            // Хуки: по бокам на уровне головы, лицом ВНУТРЬ (к центру) и чуть к игроку.
+            // По правой лапе бьёт ЛЕВАЯ рука (кулак идёт слева направо, n = +X), по левой — правая.
+            new PadDef(new Vector3(0.52f, -0.05f, 0.42f), new Vector3(1f, 0f, 0.35f), PadKind.Hook, Hand.Left),
+            new PadDef(new Vector3(-0.52f, -0.05f, 0.42f), new Vector3(-1f, 0f, 0.35f), PadKind.Hook, Hand.Right),
+            // Апперкоты: НАД верхними прямыми лапами, лицом вниз — кулак идёт снизу вверх.
+            new PadDef(new Vector3(-0.25f, 0.33f, 0.5f), new Vector3(0f, 1f, 0.2f), PadKind.Uppercut, Hand.Left),
+            new PadDef(new Vector3(0.25f, 0.33f, 0.5f), new Vector3(0f, 1f, 0.2f), PadKind.Uppercut, Hand.Right),
         };
 
         public static void Build(BoxingMode mode)
@@ -99,7 +100,7 @@ namespace VRSports.EditorTools
                     def.Kind == PadKind.Uppercut ? Vector3.back : Vector3.up);
                 var col = padGo.AddComponent<BoxCollider>();
                 col.isTrigger = true;                    // перчатка (кинематическое тело) ловит вход в триггер
-                col.size = new Vector3(0.24f, 0.24f, 0.14f);
+                col.size = new Vector3(0.2f, 0.2f, 0.12f);   // чуть меньше лапы — реже задевается соседняя
                 col.center = new Vector3(0, 0, -0.03f);
 
                 var vis = MeshObject("Visual", padGo.transform, Vector3.zero, padMesh, padBody, padFace);
@@ -114,7 +115,7 @@ namespace VRSports.EditorTools
             // Перекладина «ответного удара» на уровне головы.
             var dodgeRoot = new GameObject("DodgeBar").transform;
             dodgeRoot.SetParent(padRig, false);
-            dodgeRoot.localPosition = new Vector3(0, 0.1f, 0);
+            dodgeRoot.localPosition = new Vector3(0, 0.17f, 0); // между прямыми (верх 0.09) и апперкотами (низ 0.26)
             var holder = new GameObject("BarHolder").transform;
             holder.SetParent(dodgeRoot, false);
             holder.localPosition = new Vector3(0, 0, 0.95f);
