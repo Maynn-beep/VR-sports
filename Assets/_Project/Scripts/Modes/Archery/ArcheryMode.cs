@@ -57,6 +57,7 @@ namespace VRSports.Modes.Archery
         private int _wave;
         private int _inFlight;
         private bool _waveEnding;
+        private Coroutine _waveRoutine;
         private int _tenStreak;
         private readonly List<Arrow> _arrows = new List<Arrow>();
 
@@ -86,16 +87,32 @@ namespace VRSports.Modes.Archery
 
         protected override void OnPrepareRound()
         {
-            StopAllCoroutines();
+            // ВАЖНО: не StopAllCoroutines()! OnPrepareRound вызывается ИЗНУТРИ корутины отсчёта
+            // базового класса — StopAllCoroutines остановил бы и её, и игра навсегда
+            // застряла бы в состоянии Countdown (так и было в первой версии).
+            if (_waveRoutine != null) StopCoroutine(_waveRoutine);
+            _waveRoutine = null;
             _tenStreak = 0;
             _inFlight = 0;
             SetupWave(0, practice: false);
+            bow.ArrowsLeft = 0; // во время отсчёта стрелять нельзя
+            bow.UpdateAmmoText();
         }
 
-        protected override void OnGameStarted() => ShowMessage($"Волна 1: {Waves[0].Name}");
+        protected override void OnGameStarted()
+        {
+            bow.ArrowsLeft = Waves[0].Arrows;
+            bow.UpdateAmmoText();
+            ShowMessage($"Волна 1: {Waves[0].Name}");
+        }
+
+        /// <summary>Подстраховка: конец волны проверяется и каждый кадр, а не только по событию.</summary>
+        protected override void OnGameUpdate() => CheckWaveEnd();
 
         protected override void OnGameFinished()
         {
+            if (_waveRoutine != null) StopCoroutine(_waveRoutine);
+            _waveRoutine = null;
             thrower.StopAll();
             ArcheryWind.Current = Vector3.zero;
             bow.ArrowsLeft = -1;
@@ -202,7 +219,7 @@ namespace VRSports.Modes.Archery
         private void CheckWaveEnd()
         {
             if (State != ModeState.Playing || _waveEnding) return;
-            if (bow.ArrowsLeft == 0 && _inFlight == 0) StartCoroutine(NextWaveRoutine());
+            if (bow.ArrowsLeft == 0 && _inFlight == 0) _waveRoutine = StartCoroutine(NextWaveRoutine());
         }
     }
 }

@@ -33,8 +33,9 @@ namespace VRSports.EditorTools
             var flagMat = Mat("Flag", new Color(1f, 0.5f, 0.1f));
 
             // ---------- поле (в него втыкаются промахи)
-            Prim(PrimitiveType.Cube, "Field", null, new Vector3(0, -0.06f, 25f), new Vector3(40f, 0.1f, 60f), grass);
-            for (int d = 10; d <= 30; d += 10)
+            // Поле до 60 м: максимальный выстрел под 45° (~64 м) улетает чуть дальше края.
+            Prim(PrimitiveType.Cube, "Field", null, new Vector3(0, -0.06f, 27.5f), new Vector3(40f, 0.1f, 65f), grass);
+            for (int d = 10; d <= 50; d += 10)
             {
                 var t = Text($"Dist_{d}", null, new Vector3(-6f, 0.01f, d), $"{d} м", 6f, new Vector2(3f, 1f), Color.white);
                 t.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
@@ -57,6 +58,7 @@ namespace VRSports.EditorTools
             gc.size = new Vector3(0.05f, 0.3f, 0.07f);
 
             var grab = bowGo.AddComponent<BowGrabInteractable>(); // без перехвата второй рукой
+            bowGo.AddComponent<VRSports.Core.NearOnlyGrab>();      // брать только рукой вблизи
             grab.colliders.Clear();
             grab.colliders.Add(gc);                // только рукоять — тетива ловится отдельно
             grab.movementType = XRBaseInteractable.MovementType.Instantaneous; // лук жёстко в руке
@@ -77,6 +79,7 @@ namespace VRSports.EditorTools
             // НЕ триггер: ближний захват руки (SphereInteractionCaster) в XR Origin игнорирует триггеры.
             nc.isTrigger = false;
             var nockInteractable = nockGo.AddComponent<XRSimpleInteractable>();
+            nockGo.AddComponent<VRSports.Core.NearOnlyGrab>();
 
             // Тетива — LineRenderer на дочернем объекте (на одном объекте не может быть двух рендереров).
             var line = Child(bowGo.transform, "String", Vector3.zero).gameObject.AddComponent<LineRenderer>();

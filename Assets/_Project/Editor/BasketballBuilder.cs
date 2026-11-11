@@ -181,6 +181,7 @@ namespace VRSports.EditorTools
                 rb.collisionDetectionMode = CollisionDetectionMode.ContinuousDynamic;
 
                 var grab = go.AddComponent<XRGrabInteractable>();
+                go.AddComponent<VRSports.Core.NearOnlyGrab>(); // без захвата лучом издалека
                 grab.movementType = XRBaseInteractable.MovementType.Kinematic;
                 grab.useDynamicAttach = true;
                 grab.throwOnDetach = true;

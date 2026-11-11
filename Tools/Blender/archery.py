@@ -93,8 +93,8 @@ bow = mesh_object("Bow", bv, bf, [wood, grip_mat], bmi)
 common.export_fbx(bow, os.path.join(OUT, "Bow.fbx"))
 
 # ---------------------------------------------------------------- стрела
-# Стрела направлена вперёд (−Y), точка отсчёта — хвостовик (место на тетиве).
-ARROW_LEN = 0.75
+# Стрела 85 см направлена вперёд (−Y), точка отсчёта — хвостовик (место на тетиве).
+ARROW_LEN = 0.85        # длиннее максимального натяжения (0.55 м) + запас за рукоятью
 shaft_mat = common.make_material("ArrowShaft", (0.85, 0.75, 0.55))
 head_mat = common.make_material("ArrowHead", (0.6, 0.62, 0.66))
 fletch_mat = common.make_material("ArrowFletch", (0.9, 0.15, 0.15))

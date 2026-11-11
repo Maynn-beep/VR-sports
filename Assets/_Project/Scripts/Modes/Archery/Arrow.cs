@@ -18,7 +18,7 @@ namespace VRSports.Modes.Archery
     /// </summary>
     public class Arrow : MonoBehaviour
     {
-        [SerializeField] private float tipOffset = 0.75f;   // наконечник — на 0.75 м впереди хвостовика
+        [SerializeField] private float tipOffset = 0.85f;   // наконечник — на 0.85 м впереди хвостовика
         [Tooltip("Коэф. сопротивления на единицу массы, 1/м. 0.0025 — стрела теряет ~10% скорости на 40 м.")]
         [SerializeField] private float drag = 0.0025f;
         [SerializeField] private float penetration = 0.06f; // насколько входит в цель
