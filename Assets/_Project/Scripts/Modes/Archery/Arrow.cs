@@ -19,8 +19,11 @@ namespace VRSports.Modes.Archery
     public class Arrow : MonoBehaviour
     {
         [SerializeField] private float tipOffset = 0.85f;   // наконечник — на 0.85 м впереди хвостовика
-        [Tooltip("Коэф. сопротивления на единицу массы, 1/м. 0.0025 — стрела теряет ~10% скорости на 40 м.")]
-        [SerializeField] private float drag = 0.0025f;
+        [Tooltip("Сопротивление ВДОЛЬ стрелы (на единицу массы), 1/м: стрела теряет ~10% скорости на 40 м.")]
+        [SerializeField] private float dragAxial = 0.0025f;
+        [Tooltip("Сопротивление ПОПЕРЁК стрелы, 1/м: ρ·C_d·A_бок/(2m) = 1.225·1.2·0.0068/(2·0.025) ≈ 0.2. " +
+                 "Боковая площадь древка в ~135 раз больше лобовой — поэтому ветер сносит стрелу.")]
+        [SerializeField] private float dragSide = 0.2f;
         [SerializeField] private float penetration = 0.06f; // насколько входит в цель
         [SerializeField] private float maxLifetime = 8f;
 
@@ -51,10 +54,19 @@ namespace VRSports.Modes.Archery
             if (!Flying) return;
             float dt = Time.fixedDeltaTime;
 
-            // 1–2. Ускорение и интегрирование. Сопротивление считается относительно ВОЗДУХА:
-            // при ветре w стрелу «сносит» по ветру.
+            // 1–2. Ускорение и интегрирование. Сопротивление считается относительно ВОЗДУХА (rel = v − w)
+            // и АНИЗОТРОПНО: поток раскладывается на составляющую вдоль оси стрелы и поперёк неё.
+            //   a = g − c_ax·|rel|·rel_ax − c_side·|rel_⊥|·rel_⊥
+            // Вдоль стрелы она обтекаемая (маленький коэффициент), поперёк — «парус» из древка и перьев.
+            // Упрощение: стрела ориентирована по скорости относительно земли и не успевает
+            // развернуться против ветра — поэтому боковой ветер даёт заметный снос.
             Vector3 rel = _velocity - ArcheryWind.Current;
-            Vector3 accel = Physics.gravity - drag * rel.magnitude * rel;
+            Vector3 axis = transform.forward;
+            Vector3 relAxial = Vector3.Dot(rel, axis) * axis;
+            Vector3 relSide = rel - relAxial;
+            Vector3 accel = Physics.gravity
+                            - dragAxial * rel.magnitude * relAxial
+                            - dragSide * relSide.magnitude * relSide;
             _velocity += accel * dt;
 
             Vector3 from = Tip;

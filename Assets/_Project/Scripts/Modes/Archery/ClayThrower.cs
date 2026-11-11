@@ -10,7 +10,9 @@ namespace VRSports.Modes.Archery
     {
         [SerializeField] private ClayDisc[] pool;
         [SerializeField] private float interval = 2.5f;
-        [SerializeField] private Vector2 distanceRange = new Vector2(14f, 24f);
+        [SerializeField] private Vector2 distanceRange = new Vector2(8f, 14f);
+        [Tooltip("Откуда вылетают диски: ±X от линии стрельбы.")]
+        [SerializeField] private float sideX = 7f;
 
         public bool Running { get; set; }
         public float Interval { get => interval; set => interval = value; }
@@ -36,8 +38,9 @@ namespace VRSports.Modes.Archery
 
             float side = Random.value < 0.5f ? -1f : 1f;
             float z = Random.Range(distanceRange.x, distanceRange.y);
-            var start = new Vector3(side * 11f, 0.8f, z);
-            var velocity = new Vector3(-side * Random.Range(8f, 11f), Random.Range(6.5f, 8.5f), Random.Range(-1f, 1f));
+            // Медленная высокая дуга поперёк поля: ~3 с в воздухе, пик ~5 м — есть время прицелиться.
+            var start = new Vector3(side * sideX, 0.8f, z);
+            var velocity = new Vector3(-side * Random.Range(4.5f, 5.5f), Random.Range(6.2f, 7.2f), Random.Range(-0.5f, 0.5f));
             disc.Launch(start, velocity);
         }
 

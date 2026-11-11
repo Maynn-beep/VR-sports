@@ -166,6 +166,7 @@ namespace VRSports.EditorTools
             for (int i = 0; i < discs.Length; i++)
             {
                 var d = MeshObject($"ClayDisc_{i + 1}", null, Vector3.zero, discMesh, clayMat);
+                d.transform.localScale = Vector3.one * 2f; // 22 см вместо 11 — видно в шлеме
                 discs[i] = d.AddComponent<ClayDisc>();
                 discs[i].Setup(fx);
                 d.SetActive(false);
@@ -174,7 +175,7 @@ namespace VRSports.EditorTools
             thrower.Setup(discs);
             // Будки метателей по бокам поля.
             foreach (float side in new[] { -1f, 1f })
-                Prim(PrimitiveType.Cube, "ThrowerHouse", null, new Vector3(side * 11.5f, 0.5f, 19f), new Vector3(1f, 1f, 1.5f), steel);
+                Prim(PrimitiveType.Cube, "ThrowerHouse", null, new Vector3(side * 7.6f, 0.5f, 11f), new Vector3(1f, 1f, 6.5f), steel);
 
             // ---------- флаг ветра
             var flagRoot = new GameObject("WindFlag").transform;
