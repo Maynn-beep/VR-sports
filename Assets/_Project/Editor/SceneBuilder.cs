@@ -60,7 +60,7 @@ namespace VRSports.EditorTools
             BuildMode<BowlingMode>("Bowling", new Color(0.55f, 0.38f, 0.24f), BowlingBuilder.Layout, BowlingBuilder.Build);
             BuildMode<BasketballMode>("Basketball", new Color(0.78f, 0.55f, 0.33f), BasketballBuilder.Layout, BasketballBuilder.Build);
             BuildMode<ArcheryMode>("Archery", new Color(0.55f, 0.42f, 0.28f), ArcheryBuilder.Layout, ArcheryBuilder.Build);
-            BuildMode<BoxingMode>("Boxing", new Color(0.3f, 0.34f, 0.48f));
+            BuildMode<BoxingMode>("Boxing", new Color(0.3f, 0.34f, 0.48f), BoxingBuilder.Layout, BoxingBuilder.Build);
 
             UpdateBuildSettings();
             AssetDatabase.SaveAssets();
@@ -137,6 +137,7 @@ namespace VRSports.EditorTools
             public Vector3 FloorCenter = new Vector3(0, -0.05f, 0);
             public Vector3 FloorSize = new Vector3(20, 0.1f, 20);
             public Vector3 BoardPosition = new Vector3(0, 0, 4f);
+            public Vector3 ControlsPosition = new Vector3(-0.8f, 0, 0.8f);
         }
 
         private static void BuildMode<T>(string sceneName, Color floorColor, ModeLayout layout = null,
@@ -170,7 +171,7 @@ namespace VRSports.EditorTools
             board.gameObject.AddComponent<ScoreBoard>().Setup(mode, title, score, timer, best, msg);
 
             // Пульт слева-спереди на уровне пояса.
-            var standPos = new Vector3(-0.8f, 0, 0.8f);
+            var standPos = layout.ControlsPosition;
             var stand = new GameObject("Controls").transform;
             stand.SetPositionAndRotation(standPos, Quaternion.LookRotation(standPos.normalized));
             Prim(PrimitiveType.Cube, "Stand", stand, new Vector3(0, 0.42f, 0), new Vector3(0.5f, 0.84f, 0.3f),
