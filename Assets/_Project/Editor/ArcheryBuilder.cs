@@ -56,7 +56,7 @@ namespace VRSports.EditorTools
             var gc = gripCol.AddComponent<BoxCollider>();
             gc.size = new Vector3(0.05f, 0.3f, 0.07f);
 
-            var grab = bowGo.AddComponent<XRGrabInteractable>();
+            var grab = bowGo.AddComponent<BowGrabInteractable>(); // без перехвата второй рукой
             grab.colliders.Clear();
             grab.colliders.Add(gc);                // только рукоять — тетива ловится отдельно
             grab.movementType = XRBaseInteractable.MovementType.Instantaneous; // лук жёстко в руке
@@ -74,7 +74,8 @@ namespace VRSports.EditorTools
             nockGo.transform.localPosition = rest.localPosition;
             var nc = nockGo.AddComponent<SphereCollider>();
             nc.radius = 0.08f;
-            nc.isTrigger = true;
+            // НЕ триггер: ближний захват руки (SphereInteractionCaster) в XR Origin игнорирует триггеры.
+            nc.isTrigger = false;
             var nockInteractable = nockGo.AddComponent<XRSimpleInteractable>();
 
             // Тетива — LineRenderer на дочернем объекте (на одном объекте не может быть двух рендереров).
