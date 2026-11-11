@@ -59,7 +59,7 @@ namespace VRSports.EditorTools
             BuildHub();
             BuildMode<BowlingMode>("Bowling", new Color(0.55f, 0.38f, 0.24f), BowlingBuilder.Layout, BowlingBuilder.Build);
             BuildMode<BasketballMode>("Basketball", new Color(0.78f, 0.55f, 0.33f), BasketballBuilder.Layout, BasketballBuilder.Build);
-            BuildMode<ArcheryMode>("Archery", new Color(0.36f, 0.58f, 0.3f));
+            BuildMode<ArcheryMode>("Archery", new Color(0.55f, 0.42f, 0.28f), ArcheryBuilder.Layout, ArcheryBuilder.Build);
             BuildMode<BoxingMode>("Boxing", new Color(0.3f, 0.34f, 0.48f));
 
             UpdateBuildSettings();
