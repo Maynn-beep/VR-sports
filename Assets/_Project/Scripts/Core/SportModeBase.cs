@@ -97,6 +97,13 @@ namespace VRSports.Core
             RivalScoreChanged?.Invoke(RivalScore);
         }
 
+        /// <summary>Итог дуэли: 1 — победил игрок, −1 — бот, 0 — ничья. По умолчанию — по очкам.</summary>
+        protected virtual int DuelOutcome()
+        {
+            int diff = HigherIsBetter ? Score - RivalScore : RivalScore - Score;
+            return diff > 0 ? 1 : diff < 0 ? -1 : 0;
+        }
+
         /// <summary>Засчитывать ли результат в рекорды (спарринг в боксе считает очки по-другому).</summary>
         protected virtual bool CountsForRecord => true;
 
@@ -159,7 +166,7 @@ namespace VRSports.Core
             if (HasRival)
             {
                 // Дуэль: сравниваем счёт игрока и бота.
-                int diff = HigherIsBetter ? Score - RivalScore : RivalScore - Score;
+                int diff = DuelOutcome();
                 string verdict = diff > 0 ? "ПОБЕДА!" : diff < 0 ? "Поражение" : "Ничья";
                 ShowMessage($"{verdict}  {Score} : {RivalScore}" + (isRecord ? "  Рекорд!" : ""));
                 Haptics.PulseBoth(diff > 0 ? 0.9f : 0.4f, 0.3f);

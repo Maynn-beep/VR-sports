@@ -43,6 +43,7 @@ namespace VRSports.Core
         private Vector3? _lookAt;
         private float _bobPhase;
         private Vector3 _knock;       // смещение тела от пропущенного удара (затухает)
+        private Vector2 _slump, _slumpTarget;   // (опускание, наклон) при нокауте
         private MaterialPropertyBlock _mpb;
         private static readonly int EmissionId = Shader.PropertyToID("_EmissionColor");
         private static readonly int BaseColorId = Shader.PropertyToID("_BaseColor");
@@ -110,6 +111,15 @@ namespace VRSports.Core
         /// <summary>Отбросить тело (в мировых координатах) — реакция на пропущенный удар.</summary>
         public void Knock(Vector3 worldOffset) => _knock += transform.InverseTransformVector(worldOffset);
 
+        /// <summary>
+        /// «Отключение» робота (нокаут): тело опускается на drop метров и наклоняется вперёд на tilt градусов.
+        /// SetSlump(0, 0) — вернуть нормальную позу.
+        /// </summary>
+        public void SetSlump(float drop, float tilt)
+        {
+            _slumpTarget = new Vector2(drop, tilt);
+        }
+
         public void SetGlow(Color color, float intensity = 2f)
         {
             if (glowRenderer == null) return;
@@ -143,7 +153,14 @@ namespace VRSports.Core
             // Парение: тело слегка покачивается вверх-вниз.
             _bobPhase += dt * 2.2f;
             _knock = Vector3.Lerp(_knock, Vector3.zero, 1f - Mathf.Exp(-dt * 9f));
-            if (visual != null) visual.localPosition = new Vector3(0f, Mathf.Sin(_bobPhase) * 0.015f, 0f) + _knock;
+            _slump = new Vector2(Mathf.MoveTowards(_slump.x, _slumpTarget.x, dt * 1.2f),   // м/с
+                                 Mathf.MoveTowards(_slump.y, _slumpTarget.y, dt * 60f));   // град/с
+            float bob = _slumpTarget.x > 0f ? 0f : Mathf.Sin(_bobPhase) * 0.015f;   // «выключенный» робот не парит
+            if (visual != null)
+            {
+                visual.localPosition = new Vector3(0f, bob - _slump.x, 0f) + _knock;
+                visual.localRotation = Quaternion.Euler(_slump.y, 0f, 0f);
+            }
 
             for (int i = 0; i < 2; i++)
             {

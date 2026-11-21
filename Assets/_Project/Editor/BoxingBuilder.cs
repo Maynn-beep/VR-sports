@@ -185,6 +185,11 @@ namespace VRSports.EditorTools
             var avatar = RobotBuilder.Build("SparringBot", new Vector3(0, 0, 0.75f), Quaternion.LookRotation(Vector3.back),
                 new Color(0.95f, 0.45f, 0.1f), gloveMesh, new[] { botGlove, cuff }, new[] { botGlove, cuff });
             avatar.SetArmSegment(0.36f);
+            // Надпись с итогом боя — выше полосок здоровья.
+            var resultLabel = avatar.transform.Find("Label").GetComponent<TMPro.TMP_Text>();
+            resultLabel.transform.localPosition = new Vector3(0, RobotBuilder.HeadY + 0.8f, 0);
+            resultLabel.fontSize = 0.75f;
+            resultLabel.rectTransform.sizeDelta = new Vector2(1.6f, 0.4f);
             var root = avatar.transform;
             var rb = root.gameObject.AddComponent<Rigidbody>();
             rb.isKinematic = true;  // составной триггер робота движется вместе с ним

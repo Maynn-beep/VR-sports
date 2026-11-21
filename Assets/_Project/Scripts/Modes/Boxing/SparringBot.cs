@@ -56,6 +56,7 @@ namespace VRSports.Modes.Boxing
         private Coroutine _parry;
         private float _sway;
         private bool _counterRequested;
+        private bool _finished;          // бой окончен: робот не двигается и не атакует
         private bool _guardLow;          // стойка опущена: закрыт корпус, открыта голова
         private float _bodyPressure, _headPressure;
         private float _lastCounter = -10f;
@@ -85,6 +86,9 @@ namespace VRSports.Modes.Boxing
             // Перчатки ищем заново перед каждым боем: контроллеры могли переподключиться.
             _gloves = FindObjectsByType<BoxingGlove>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             Stop();
+            _finished = false;
+            avatar.SetSlump(0f, 0f);
+            avatar.Say("");
             BotHp = PlayerHp = MaxHp;
             botBar.Set(1f, true);
             playerBar.Set(1f, true);
@@ -122,7 +126,7 @@ namespace VRSports.Modes.Boxing
         private void Update()
         {
             if (_head == null && Camera.main != null) _head = Camera.main.transform;
-            if (_head == null) return;
+            if (_head == null || _finished) return;
 
             // Робот держится на дистанции удара перед игроком и смотрит на него; слегка «качает маятник».
             Vector3 headFlat = Flat(_head.position);
@@ -194,6 +198,46 @@ namespace VRSports.Modes.Boxing
                 yield return new WaitForSeconds(Rival.Pick(_level, 1.2f, 0.7f, 0.45f));
                 avatar.SetGlow(new Color(0.2f, 0.9f, 1f));
             }
+        }
+
+        /// <summary>
+        /// Финал боя — робот показывает результат, чтобы его было видно прямо перед собой:
+        ///  • нокаут робота — он «отключается»: глаза гаснут, руки падают, тело оседает на пол;
+        ///  • победа робота — поднимает руки вверх;
+        ///  • решение по очкам — над головой крупная надпись с итогом.
+        /// outcome: 1 — победил игрок, −1 — робот, 0 — ничья.
+        /// </summary>
+        public void Finish(int outcome, bool knockout, int playerScore, int botScore)
+        {
+            Stop();
+            _finished = true;
+            string score = $"{playerScore} : {botScore}";
+            if (outcome > 0 && knockout)
+            {
+                avatar.SetGlow(Color.black, 0f);
+                avatar.SetHandLocal(AvatarSide.Left, new Vector3(-0.3f, headHeight - 0.95f, 0.15f), 2f);
+                avatar.SetHandLocal(AvatarSide.Right, new Vector3(0.3f, headHeight - 0.95f, 0.15f), 2f);
+                // Нижняя точка робота — на 0,95 м ниже центра головы; опускаем его до пола.
+                float bottom = avatar.transform.position.y + headHeight - 0.95f;
+                avatar.SetSlump(Mathf.Max(0f, bottom - 0.02f), 25f);
+                avatar.Say($"<size=160%>НОКАУТ!</size>\nВы победили  {score}");
+            }
+            else if (outcome < 0)
+            {
+                avatar.SetGlow(new Color(1f, 0.15f, 0.1f), 3f);
+                avatar.SetHandLocal(AvatarSide.Left, new Vector3(-0.28f, headHeight + 0.3f, 0.1f), 2.5f);
+                avatar.SetHandLocal(AvatarSide.Right, new Vector3(0.28f, headHeight + 0.3f, 0.1f), 2.5f);
+                avatar.Say(knockout ? $"<size=160%>Вы в нокауте</size>\nПобеда робота  {score}"
+                                    : $"<size=160%>Поражение</size>\nРобот победил по очкам  {score}");
+            }
+            else if (outcome > 0)
+            {
+                avatar.SetGlow(new Color(0.2f, 0.9f, 1f), 0.5f);
+                avatar.SetHandLocal(AvatarSide.Left, new Vector3(-0.22f, headHeight - 0.6f, 0.12f), 2f);
+                avatar.SetHandLocal(AvatarSide.Right, new Vector3(0.22f, headHeight - 0.6f, 0.12f), 2f);
+                avatar.Say($"<size=150%>ПОБЕДА!</size>\nПо очкам  {score}");
+            }
+            else avatar.Say($"<size=160%>Ничья</size>\n{score}");
         }
 
         // ---------------------------------------------------------------- защита робота

@@ -166,7 +166,11 @@ namespace VRSports.Modes.Boxing
 
         protected override void OnGameFinished()
         {
-            if (sparring != null) sparring.Stop();
+            if (sparring != null && HasRival)
+            {
+                bool ko = sparring.BotHp <= 0f || sparring.PlayerHp <= 0f;
+                sparring.Finish(DuelOutcome(), ko, Score, RivalScore);
+            }
             StopSequence();
             dodgeBar.Cancel();
             foreach (var p in pads) p.TurnOff();
@@ -280,6 +284,20 @@ namespace VRSports.Modes.Boxing
         }
 
         // ---------------------------------------------------------------- спарринг
+
+        /// <summary>
+        /// Итог спарринга: нокаут решает всё (даже если по очкам впереди проигравший),
+        /// иначе — решение по очкам, как у судей.
+        /// </summary>
+        protected override int DuelOutcome()
+        {
+            if (sparring != null && HasRival)
+            {
+                if (sparring.BotHp <= 0f) return 1;
+                if (sparring.PlayerHp <= 0f) return -1;
+            }
+            return base.DuelOutcome();
+        }
 
         private void OnPlayerLanded(float dmg, ZoneKind zone)
         {

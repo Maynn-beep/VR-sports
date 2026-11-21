@@ -36,6 +36,8 @@ namespace VRSports.Modes.Boxing
             var s = fill.localScale;
             fill.localScale = new Vector3(Mathf.Max(0.0001f, width * _shown), s.y, s.z);
             fill.localPosition = new Vector3(-width * (1f - _shown) / 2f, 0f, fill.localPosition.z);
+            // При нуле прячем заливку целиком: иначе остаётся тонкая полоска, похожая на «1 HP».
+            fill.gameObject.SetActive(_shown > 0.002f);
         }
     }
 }
