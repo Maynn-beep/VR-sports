@@ -34,6 +34,11 @@ namespace VRSports.Modes.Archery
 
         public bool Flying { get; private set; }
         public Vector3 LaunchPosition { get; private set; }
+        /// <summary>Стрела робота-соперника (очки идут ему).</summary>
+        public bool IsRival { get; set; }
+        public float TipOffset => tipOffset;
+        public float DragAxial => dragAxial;
+        public float DragSide => dragSide;
 
         private Vector3 _velocity;
         private float _life;

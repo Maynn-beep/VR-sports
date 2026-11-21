@@ -201,12 +201,19 @@ namespace VRSports.EditorTools
             // ---------- табло фреймов над дорожкой
             var sheetRoot = new GameObject("FrameSheet").transform;
             sheetRoot.position = new Vector3(0, 0, 7f);
-            Prim(PrimitiveType.Cube, "Panel", sheetRoot, new Vector3(0, 2.9f, 0), new Vector3(3.7f, 0.8f, 0.05f), darkMat);
-            var sheetText = Text("Frames", sheetRoot, new Vector3(0, 2.9f, -0.04f), "", 1.2f, new Vector2(3.6f, 0.75f), Color.white);
+            // Панель выше, чем нужно для одного игрока: с соперником строк вдвое больше.
+            Prim(PrimitiveType.Cube, "Panel", sheetRoot, new Vector3(0, 3.0f, 0), new Vector3(3.7f, 1.2f, 0.05f), darkMat);
+            var sheetText = Text("Frames", sheetRoot, new Vector3(0, 3.0f, -0.04f), "", 1.1f, new Vector2(3.6f, 1.15f), Color.white);
             var sheet = sheetRoot.gameObject.AddComponent<BowlingScoreSheet>();
             sheet.Setup(sheetText);
 
-            mode.Setup(ball, pins, sheet);
+            // ---------- робот-соперник (ждёт справа за подставкой шара)
+            var avatar = RobotBuilder.Build("RivalBot", new Vector3(1.7f, 0f, -0.9f), Quaternion.identity,
+                new Color(0.95f, 0.45f, 0.1f));
+            var bot = avatar.gameObject.AddComponent<BowlingBot>();
+            bot.Setup(avatar, ball, pins, rackPoint, FoulZ, HeadPinZ);
+
+            mode.Setup(ball, pins, sheet, bot);
         }
 
         private static void LaneSegment(Transform root, string name, float z0, float z1, Material mat)

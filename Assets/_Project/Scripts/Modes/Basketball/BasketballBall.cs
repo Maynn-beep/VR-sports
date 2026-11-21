@@ -24,6 +24,8 @@ namespace VRSports.Modes.Basketball
         [SerializeField] private Transform spawnPoint;
         [SerializeField] private Material fireMaterial;
         [SerializeField] private TrailRenderer fireTrail;
+        [Tooltip("Мяч робота-соперника: игрок его не берёт, очки идут боту.")]
+        [SerializeField] private bool isRival;
 
         [Header("Аэродинамика")]
         [SerializeField] private float dragK = 0.0130f;    // ½·1.225·0.47·π·0.12²
@@ -42,6 +44,11 @@ namespace VRSports.Modes.Basketball
         public bool ShotActive { get; private set; }
         public Vector3 ReleasePosition { get; private set; }
         public InteractorHandedness LastHand { get; private set; }
+        public bool IsRival => isRival;
+        public float DragK => dragK;
+        public float MagnusK => magnusK;
+        public float AssistBackspin => assistBackspin;
+        public float Mass => _rb.mass;
 
         /// <summary>Когда мяч последний раз прошёл верхний датчик кольца (см. Hoop).</summary>
         internal float TopSensorTime = -10f;
@@ -53,9 +60,9 @@ namespace VRSports.Modes.Basketball
         private float _lastFloorContact = -10f;
         private float _floorTimer;
 
-        public void Setup(Transform spawn, Material fire, TrailRenderer trail)
+        public void Setup(Transform spawn, Material fire, TrailRenderer trail, bool rival = false)
         {
-            spawnPoint = spawn; fireMaterial = fire; fireTrail = trail;
+            spawnPoint = spawn; fireMaterial = fire; fireTrail = trail; isRival = rival;
         }
 
         private void Awake()
@@ -65,6 +72,30 @@ namespace VRSports.Modes.Basketball
             _renderer = GetComponent<MeshRenderer>();
             _normalMaterials = _renderer.sharedMaterials;
             _rb.maxAngularVelocity = maxSpin;
+            if (isRival) _grab.enabled = false; // мяч робота игроку не взять
+        }
+
+        /// <summary>Робот держит мяч: мяч кинематический и следует за руками.</summary>
+        public void BotHold(Vector3 position)
+        {
+            ShotActive = false;
+            _floorTimer = 0f;
+            _rb.isKinematic = true;
+            _rb.position = position;
+            transform.position = position;
+        }
+
+        /// <summary>Бросок робота: та же физика, что после броска игрока (сопротивление, Магнус, отскоки).</summary>
+        public void BotLaunch(Vector3 position, Vector3 velocity, Vector3 angular)
+        {
+            _rb.isKinematic = false;
+            _rb.position = position;
+            transform.position = position;
+            _rb.linearVelocity = velocity;
+            _rb.angularVelocity = angular;
+            ReleasePosition = position;
+            TopSensorTime = -10f;
+            ShotActive = true;
         }
 
         private void OnEnable()
@@ -146,7 +177,7 @@ namespace VRSports.Modes.Basketball
 
         private void Update()
         {
-            if (_grab.isSelected) { _floorTimer = 0f; return; }
+            if (_grab.isSelected || _rb.isKinematic) { _floorTimer = 0f; return; }
 
             // Аркадный возврат: мяч, который катается по полу, сам возвращается на подставку.
             bool onFloor = Time.time - _lastFloorContact < 0.3f;
@@ -176,6 +207,7 @@ namespace VRSports.Modes.Basketball
         public void ReturnToRack()
         {
             if (_grab.isSelected || spawnPoint == null) return;
+            _rb.isKinematic = false;
             ShotActive = false;
             _floorTimer = 0f;
             _rb.linearVelocity = Vector3.zero;

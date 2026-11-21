@@ -167,8 +167,28 @@ namespace VRSports.EditorTools
                 var spawn = new GameObject($"Spawn_{i}").transform;
                 spawn.SetParent(tray, false);
                 spawn.localPosition = new Vector3((i % 2 == 0 ? -1 : 1) * 0.14f, 0.8f + BallR + 0.03f, (i < 2 ? -1 : 1) * 0.14f);
+                balls[i] = MakeBall($"Basketball_{i + 1}", spawn, ballMesh, ballMat, seamMat, ballPhys, fireMat, trailMat, false);
+            }
 
-                var go = MeshObject($"Basketball_{i + 1}", null, spawn.position, ballMesh, ballMat, seamMat);
+            // ---------- робот-соперник со своим мячом (другого цвета — чтобы не путать)
+            var avatar = RobotBuilder.Build("RivalBot", new Vector3(3f, 0f, 1.5f), Quaternion.identity,
+                new Color(0.95f, 0.45f, 0.1f));
+            var botSpawn = new GameObject("BotBallSpawn").transform;
+            botSpawn.SetParent(avatar.transform, false);
+            botSpawn.localPosition = new Vector3(0f, 1.05f, 0.32f);
+            var botBall = MakeBall("Basketball_Bot", botSpawn, ballMesh, Mat("Basketball_Bot", new Color(0.3f, 0.45f, 0.85f)),
+                seamMat, ballPhys, fireMat, trailMat, true);
+            var bot = avatar.gameObject.AddComponent<BasketballBot>();
+            bot.Setup(avatar, botBall, hoop);
+
+            mode.Setup(balls, hoop, combo, bot, botBall);
+        }
+
+        private static BasketballBall MakeBall(string name, Transform spawn, Mesh ballMesh, Material ballMat, Material seamMat,
+            PhysicsMaterial ballPhys, Material fireMat, Material trailMat, bool rival)
+        {
+            {
+                var go = MeshObject(name, null, spawn.position, ballMesh, ballMat, seamMat);
                 var col = go.AddComponent<SphereCollider>();
                 col.radius = BallR;
                 col.sharedMaterial = ballPhys;
@@ -197,11 +217,10 @@ namespace VRSports.EditorTools
                 trail.emitting = false;
                 trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
-                balls[i] = go.AddComponent<BasketballBall>();
-                balls[i].Setup(spawn, fireMat, trail);
+                var ball = go.AddComponent<BasketballBall>();
+                ball.Setup(spawn, fireMat, trail, rival);
+                return ball;
             }
-
-            mode.Setup(balls, hoop, combo);
         }
 
         private static void Sensor(Transform parent, string name, Vector3 pos, Vector3 size, bool top)

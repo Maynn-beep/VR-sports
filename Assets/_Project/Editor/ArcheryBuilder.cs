@@ -188,7 +188,15 @@ namespace VRSports.EditorTools
             var windLabel = Text("WindLabel", flagRoot, new Vector3(0, 3.35f, 0), "", 2f, new Vector2(2.5f, 0.4f), Color.white);
             flagRoot.gameObject.AddComponent<WindFlag>().Setup(pivot, windLabel);
 
-            mode.Setup(bow, targets, thrower);
+            // ---------- робот-лучник справа от игрока, со своим луком
+            var avatar = RobotBuilder.Build("RivalBot", new Vector3(2.4f, 0f, 0.2f), Quaternion.identity,
+                new Color(0.95f, 0.45f, 0.1f));
+            var botBow = MeshObject("BotBow", null, new Vector3(2.4f, 1.3f, 0.7f), LoadMesh(Models + "Bow.fbx"),
+                Mat("Bow_Wood", new Color(0.45f, 0.25f, 0.1f)), Mat("Bow_Grip", new Color(0.1f, 0.08f, 0.07f)));
+            var bot = avatar.gameObject.AddComponent<ArcheryBot>();
+            bot.Setup(avatar, bow, botBow.transform, targets);
+
+            mode.Setup(bow, targets, thrower, bot);
         }
 
         private static Transform Child(Transform parent, string name, Vector3 localPos)

@@ -16,10 +16,13 @@ namespace VRSports.Core
         [SerializeField] private TMP_Text timerText;
         [SerializeField] private TMP_Text bestText;
         [SerializeField] private TMP_Text messageText;
+        [SerializeField] private TMP_Text rivalText;
 
-        public void Setup(SportModeBase m, TMP_Text title, TMP_Text score, TMP_Text timer, TMP_Text best, TMP_Text message)
+        public void Setup(SportModeBase m, TMP_Text title, TMP_Text score, TMP_Text timer, TMP_Text best, TMP_Text message,
+            TMP_Text rival)
         {
             mode = m; titleText = title; scoreText = score; timerText = timer; bestText = best; messageText = message;
+            rivalText = rival;
         }
 
         private void OnEnable()
@@ -28,6 +31,8 @@ namespace VRSports.Core
             mode.ScoreChanged += OnScore;
             mode.StateChanged += OnState;
             mode.MessageShown += OnMessage;
+            mode.RivalScoreChanged += OnRivalScore;
+            mode.RivalChanged += OnRivalChanged;
         }
 
         private void OnDisable()
@@ -36,6 +41,8 @@ namespace VRSports.Core
             mode.ScoreChanged -= OnScore;
             mode.StateChanged -= OnState;
             mode.MessageShown -= OnMessage;
+            mode.RivalScoreChanged -= OnRivalScore;
+            mode.RivalChanged -= OnRivalChanged;
         }
 
         private void Start()
@@ -46,6 +53,7 @@ namespace VRSports.Core
             OnMessage("Нажмите «Старт»");
             RefreshBest();
             RefreshTimer();
+            OnRivalScore(mode.RivalScore);
         }
 
         private void Update()
@@ -53,7 +61,21 @@ namespace VRSports.Core
             if (mode != null && mode.HasTimer && mode.State == ModeState.Playing) RefreshTimer();
         }
 
-        private void OnScore(int score) => scoreText.text = $"Очки: {score}";
+        private void OnScore(int score) => scoreText.text = mode.HasRival ? $"Вы: {score}" : $"Очки: {score}";
+
+        /// <summary>Строка соперника видна, только когда бот включён.</summary>
+        private void OnRivalScore(int score)
+        {
+            if (rivalText == null) return;
+            rivalText.text = mode.HasRival ? $"Бот ({Rival.Name(mode.Rival)}): {score}" : "";
+        }
+
+        private void OnRivalChanged(RivalLevel level)
+        {
+            OnScore(mode.Score);
+            OnRivalScore(mode.RivalScore);
+            OnMessage(level == RivalLevel.Off ? "Соперник выключен" : $"Соперник: {Rival.Name(level)}. Нажмите «Старт»");
+        }
 
         private void OnState(ModeState state)
         {

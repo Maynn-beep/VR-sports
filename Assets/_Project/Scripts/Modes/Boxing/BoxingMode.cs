@@ -15,6 +15,9 @@ namespace VRSports.Modes.Boxing
     ///  • комбо: каждые 8 точных ударов подряд +1 к множителю (до ×4);
     ///    промах, не та рука или пропущенный «ответный удар» сбрасывают комбо;
     ///  • со 2-го раунда тренажёр бьёт в ответ перекладиной — от неё нужно нырнуть (+5 за уклон).
+    ///
+    /// С соперником вместо тренажёра с лапами — спарринг с роботом (SparringBot):
+    /// очки = нанесённый урон, нокаут (здоровье 0) заканчивает бой досрочно.
     /// </summary>
     public class BoxingMode : SportModeBase
     {
@@ -22,6 +25,8 @@ namespace VRSports.Modes.Boxing
         [SerializeField] private Transform padRig;          // поднимается под рост игрока
         [SerializeField] private DodgeBar dodgeBar;
         [SerializeField] private TMP_Text comboText;
+        [SerializeField] private SparringBot sparring;
+        [SerializeField] private GameObject[] trainerParts;   // колонна, лапы, легенда — прячутся в спарринге
 
         [Header("Оценка удара, м/с")]
         [SerializeField] private float minSpeed = 1.5f;
@@ -30,6 +35,8 @@ namespace VRSports.Modes.Boxing
 
         public override string ModeId => "boxing";
         public override string DisplayName => "Бокс";
+        public override bool SupportsRival => sparring != null;
+        protected override bool CountsForRecord => !HasRival; // очки спарринга считаются иначе, чем на лапах
 
         // Параметры раундов: окно на удар, пауза между сериями, длина серии, период перекладины (0 — нет).
         private static readonly float[] Window = { 1.6f, 1.2f, 0.9f };
@@ -49,9 +56,9 @@ namespace VRSports.Modes.Boxing
 
         private void Reset() => RoundDuration = 90f;
 
-        public void Setup(BoxingPad[] p, Transform rig, DodgeBar bar, TMP_Text combo)
+        public void Setup(BoxingPad[] p, Transform rig, DodgeBar bar, TMP_Text combo, SparringBot bot, GameObject[] trainer)
         {
-            pads = p; padRig = rig; dodgeBar = bar; comboText = combo;
+            pads = p; padRig = rig; dodgeBar = bar; comboText = combo; sparring = bot; trainerParts = trainer;
         }
 
         private void OnEnable()
@@ -59,6 +66,12 @@ namespace VRSports.Modes.Boxing
             if (pads != null)
                 foreach (var p in pads) { p.Punched += OnPunched; p.Expired += OnExpired; }
             if (dodgeBar != null) dodgeBar.Resolved += OnDodgeResolved;
+            if (sparring != null)
+            {
+                sparring.PlayerLanded += OnPlayerLanded;
+                sparring.Blocked += OnBotBlocked;
+                sparring.BotStruck += OnBotStruck;
+            }
         }
 
         private void OnDisable()
@@ -66,12 +79,28 @@ namespace VRSports.Modes.Boxing
             if (pads != null)
                 foreach (var p in pads) { p.Punched -= OnPunched; p.Expired -= OnExpired; }
             if (dodgeBar != null) dodgeBar.Resolved -= OnDodgeResolved;
+            if (sparring != null)
+            {
+                sparring.PlayerLanded -= OnPlayerLanded;
+                sparring.Blocked -= OnBotBlocked;
+                sparring.BotStruck -= OnBotStruck;
+            }
         }
 
         private void Start()
         {
             _head = Camera.main != null ? Camera.main.transform : null;
             UpdateComboText();
+            OnRivalChanged();
+        }
+
+        /// <summary>Тренажёр с лапами или робот для спарринга — в зависимости от выбора соперника.</summary>
+        protected override void OnRivalChanged()
+        {
+            if (sparring == null) return;
+            sparring.Show(HasRival);
+            if (trainerParts != null) foreach (var go in trainerParts) if (go != null) go.SetActive(!HasRival);
+            if (HasRival) sparring.Prepare(_head, _headY);
         }
 
         // ---------------------------------------------------------------- хуки SportModeBase
@@ -85,14 +114,34 @@ namespace VRSports.Modes.Boxing
             _combo = 0;
             _round = -1;
             Calibrate();
+            if (HasRival) sparring.Prepare(_head, _headY);
             UpdateComboText();
         }
 
-        protected override void OnGameStarted() => ShowMessage("Раунд 1 — бейте по светящимся лапам!");
+        protected override void OnGameStarted()
+        {
+            if (HasRival)
+            {
+                sparring.Begin(Rival);
+                ShowMessage("Бой! Защищайтесь перчатками, бейте, когда робот раскрылся");
+                return;
+            }
+            ShowMessage("Раунд 1 — бейте по светящимся лапам!");
+        }
 
         protected override void OnGameUpdate()
         {
             int round = Mathf.Min(2, Mathf.FloorToInt((RoundDuration - TimeLeft) / RoundLength));
+            if (HasRival)
+            {
+                if (round != _round)
+                {
+                    _round = round;
+                    sparring.SetRound(round + 1);
+                    if (round > 0) { ShowMessage($"Раунд {round + 1} — робот ускоряется!"); Haptics.PulseBoth(0.6f, 0.25f); }
+                }
+                return;
+            }
             if (round != _round)
             {
                 _round = round;
@@ -117,6 +166,7 @@ namespace VRSports.Modes.Boxing
 
         protected override void OnGameFinished()
         {
+            if (sparring != null) sparring.Stop();
             StopSequence();
             dodgeBar.Cancel();
             foreach (var p in pads) p.TurnOff();
@@ -227,6 +277,45 @@ namespace VRSports.Modes.Boxing
         {
             _combo = 0;
             UpdateComboText();
+        }
+
+        // ---------------------------------------------------------------- спарринг
+
+        private void OnPlayerLanded(float dmg, ZoneKind zone)
+        {
+            if (State != ModeState.Playing) return;
+            AddScore(Mathf.RoundToInt(dmg));
+            ShowMessage(zone == ZoneKind.Head ? $"В голову! −{dmg:F0}" : $"По корпусу −{dmg:F0}");
+            if (sparring.BotHp <= 0f)
+            {
+                AddScore(25); // бонус за нокаут
+                ShowMessage("НОКАУТ! Вы победили");
+                FinishGame();
+            }
+        }
+
+        private void OnBotBlocked()
+        {
+            if (State == ModeState.Playing) ShowMessage("Блок — обойдите защиту (хук, апперкот, корпус)");
+        }
+
+        private void OnBotStruck(float dmg, string what)
+        {
+            if (State != ModeState.Playing) return;
+            if (dmg <= 0f)
+            {
+                AddScore(2); // защита тоже приносит очки
+                ShowMessage(what + " +2");
+                return;
+            }
+            AddRivalScore(Mathf.RoundToInt(dmg));
+            ShowMessage(what);
+            if (sparring.PlayerHp <= 0f)
+            {
+                AddRivalScore(25);
+                ShowMessage("Вы в нокауте");
+                FinishGame();
+            }
         }
 
         // ---------------------------------------------------------------- калибровка

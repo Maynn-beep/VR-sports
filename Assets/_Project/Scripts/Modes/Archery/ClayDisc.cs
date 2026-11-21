@@ -23,6 +23,14 @@ namespace VRSports.Modes.Archery
         [SerializeField] private ParticleSystem shatterFx;
 
         private Vector3 _velocity;
+        private float _launchTime;
+
+        /// <summary>Сколько секунд диск уже летит.</summary>
+        public float Airtime => Time.time - _launchTime;
+
+        /// <summary>Положение диска через dt секунд: x = x₀ + v·t + ½·g·k·t² (k — доля гравитации).</summary>
+        public Vector3 Predict(float dt) =>
+            transform.position + _velocity * dt + 0.5f * gravityScale * dt * dt * Physics.gravity;
 
         public System.Action<ClayDisc> Missed;
 
@@ -35,6 +43,7 @@ namespace VRSports.Modes.Archery
         {
             transform.position = position;
             _velocity = velocity;
+            _launchTime = Time.time;
             gameObject.SetActive(true);
             if (!Active.Contains(this)) Active.Add(this);
         }

@@ -14,12 +14,17 @@ namespace VRSports.Modes.Bowling
     ///   4. Подсчёт: сколько кеглей стояло до броска минус сколько стоит сейчас.
     ///   5. Уборка: сбитые кегли убираем; в новом фрейме ставим все 10 заново.
     ///   6. Шар возвращается на подставку → снова шаг 1.
+    ///
+    /// С соперником игроки бросают по очереди целыми фреймами (как в клубе): фрейм игрока →
+    /// фрейм бота → ... Бот (BowlingBot) берёт тот же шар, а его бросок проходит через ту же
+    /// корутину ThrowRoutine — подсчёт идёт в его собственный протокол BowlingScore.
     /// </summary>
     public class BowlingMode : SportModeBase
     {
         [SerializeField] private BowlingBall ball;
         [SerializeField] private BowlingPin[] pins;
         [SerializeField] private BowlingScoreSheet sheet;
+        [SerializeField] private BowlingBot bot;
 
         [Header("Тайминги броска")]
         [SerializeField] private float rollTimeout = 12f;
@@ -28,15 +33,21 @@ namespace VRSports.Modes.Bowling
 
         public override string ModeId => "bowling";
         public override string DisplayName => "Боулинг";
+        public override bool SupportsRival => bot != null;
 
         private readonly BowlingScore _score = new BowlingScore();
+        private readonly BowlingScore _rivalScore = new BowlingScore();
+        private bool _botTurn;
+
+        /// <summary>Протокол того, кто сейчас бросает.</summary>
+        private BowlingScore Current => _botTurn ? _rivalScore : _score;
         private Coroutine _throwRoutine;
         private bool _ballInPit;
         private int _strikeStreak;
 
-        public void Setup(BowlingBall b, BowlingPin[] p, BowlingScoreSheet s)
+        public void Setup(BowlingBall b, BowlingPin[] p, BowlingScoreSheet s, BowlingBot rival)
         {
-            ball = b; pins = p; sheet = s;
+            ball = b; pins = p; sheet = s; bot = rival;
         }
 
         private void OnEnable()
@@ -53,8 +64,16 @@ namespace VRSports.Modes.Bowling
         {
             ResetRack();
             ball.ReturnToRack();
-            sheet.Refresh(_score);
+            OnRivalChanged();
         }
+
+        protected override void OnRivalChanged()
+        {
+            if (bot != null) bot.Show(HasRival);
+            RefreshSheet();
+        }
+
+        private void RefreshSheet() => sheet.Refresh(_score, HasRival ? _rivalScore : null, _botTurn);
 
         // ---------------------------------------------------------------- хуки SportModeBase
 
@@ -62,11 +81,14 @@ namespace VRSports.Modes.Bowling
         {
             StopThrow();
             _score.Reset();
+            _rivalScore.Reset();
+            _botTurn = false;
             _strikeStreak = 0;
+            if (bot != null && HasRival) bot.Park();
             ResetRack();
             ball.ReturnToRack();
             ball.SetGrabbable(true);
-            sheet.Refresh(_score);
+            RefreshSheet();
         }
 
         protected override void OnGameStarted() => ShowMessage("Фрейм 1 — бросайте!");
@@ -74,6 +96,9 @@ namespace VRSports.Modes.Bowling
         protected override void OnGameFinished()
         {
             StopThrow();
+            if (bot != null && HasRival) bot.Park();
+            _botTurn = false;
+            ball.ReturnToRack();
             ball.SetGrabbable(true);
         }
 
@@ -97,7 +122,8 @@ namespace VRSports.Modes.Bowling
             ball.SetGrabbable(false);
             _ballInPit = false;
             int standingBefore = CountStanding();
-            int frameBefore = _score.CurrentFrame;
+            var score = Current;
+            int frameBefore = score.CurrentFrame;
 
             // 2. Качение.
             float t = 0f, slowTime = 0f;
@@ -120,15 +146,18 @@ namespace VRSports.Modes.Bowling
             // 4. Подсчёт.
             int standing = CountStanding();
             int knocked = Mathf.Max(0, standingBefore - standing);
-            _score.Roll(knocked);
-            SetScore(_score.Total);
-            sheet.Refresh(_score);
+            score.Roll(knocked);
+            if (_botTurn) SetRivalScore(_rivalScore.Total);
+            else SetScore(_score.Total);
+            RefreshSheet();
             Announce(knocked, standingBefore, standing);
 
             yield return new WaitForSeconds(1.2f);
 
             _throwRoutine = null;
-            if (_score.IsGameOver)
+            bool frameDone = score.CurrentFrame != frameBefore;
+            bool allDone = _score.IsGameOver && (!HasRival || _rivalScore.IsGameOver);
+            if (allDone)
             {
                 ball.ReturnToRack();
                 FinishGame();
@@ -136,17 +165,41 @@ namespace VRSports.Modes.Bowling
             }
 
             // 5. Уборка: новый фрейм или все сбиты → полная расстановка.
-            if (_score.CurrentFrame != frameBefore || standing == 0) ResetRack();
+            if (frameDone || standing == 0) ResetRack();
             else RemoveFallenPins();
+
+            // Смена очереди: фрейм закончился, и у другого ещё есть фреймы.
+            if (HasRival && frameDone)
+            {
+                var other = _botTurn ? _score : _rivalScore;
+                if (!other.IsGameOver) _botTurn = !_botTurn;
+                _strikeStreak = 0;
+                RefreshSheet();
+            }
 
             // 6. Возврат шара.
             ball.ReturnToRack();
-            ball.SetGrabbable(true);
-            ShowMessage($"Фрейм {_score.CurrentFrame + 1}");
+            if (_botTurn)
+            {
+                ShowMessage($"Бросает бот — фрейм {_rivalScore.CurrentFrame + 1}");
+                // Первый бросок фрейма (или после страйка в 10-м) — по полной расстановке.
+                bot.TakeTurn(Rival, frameDone || standing == 0, _rivalScore.CurrentFrame);
+            }
+            else
+            {
+                ball.SetGrabbable(true);
+                ShowMessage(HasRival ? $"Ваш фрейм {_score.CurrentFrame + 1}" : $"Фрейм {_score.CurrentFrame + 1}");
+            }
         }
 
         private void Announce(int knocked, int standingBefore, int standingNow)
         {
+            if (_botTurn)
+            {
+                ShowMessage(standingBefore == 10 && standingNow == 0 ? "Бот: страйк!"
+                    : standingNow == 0 ? "Бот: спэр" : knocked == 0 ? "Бот промахнулся" : $"Бот сбил {knocked}");
+                return;
+            }
             if (standingBefore == 10 && standingNow == 0)
             {
                 _strikeStreak++;

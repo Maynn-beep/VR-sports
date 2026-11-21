@@ -28,6 +28,16 @@ namespace VRSports.Modes.Archery
             _home = transform.position;
         }
 
+        public Vector3 FaceCenter => faceCenter.position;
+
+        /// <summary>Где будет центр мишени через dt секунд (движение — синусоида, считается точно).</summary>
+        public Vector3 PredictFace(float dt)
+        {
+            if (_speed <= 0f) return faceCenter.position;
+            float dx = _amplitude * (Mathf.Sin(_phase + _speed * dt) - Mathf.Sin(_phase));
+            return faceCenter.position + Vector3.right * dx;
+        }
+
         public int ScoreFor(Vector3 point)
         {
             // Проекция на плоскость мишени убирает глубину (стрела входит под углом).

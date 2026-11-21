@@ -55,7 +55,50 @@ namespace VRSports.Core
         public event Action<int> ScoreChanged;
         public event Action<string> MessageShown;
 
+        // ---------- Соперник-бот (общая часть для всех видов спорта) ----------
+
+        /// <summary>Поддерживает ли режим соперника (кнопка «Соперник» на пульте).</summary>
+        public virtual bool SupportsRival => false;
+        public RivalLevel Rival { get; private set; } = RivalLevel.Off;
+        public bool HasRival => Rival != RivalLevel.Off;
+        public int RivalScore { get; private set; }
+        public event Action<int> RivalScoreChanged;
+        public event Action<RivalLevel> RivalChanged;
+
         private Coroutine _countdown;
+
+        protected virtual void Awake()
+        {
+            // Выбранный уровень соперника запоминается для каждого режима отдельно.
+            if (SupportsRival) Rival = (RivalLevel)Mathf.Clamp(PlayerPrefs.GetInt("rival_" + ModeId, 0), 0, 3);
+        }
+
+        /// <summary>Сменить соперника (только между партиями).</summary>
+        public bool SetRival(RivalLevel level)
+        {
+            if (!SupportsRival || State == ModeState.Playing || State == ModeState.Countdown) return false;
+            Rival = level;
+            PlayerPrefs.SetInt("rival_" + ModeId, (int)level);
+            SetRivalScore(0);
+            RivalChanged?.Invoke(level);
+            OnRivalChanged();
+            return true;
+        }
+
+        public void AddRivalScore(int points)
+        {
+            if (State != ModeState.Playing) return;
+            SetRivalScore(RivalScore + points);
+        }
+
+        protected void SetRivalScore(int value)
+        {
+            RivalScore = value;
+            RivalScoreChanged?.Invoke(RivalScore);
+        }
+
+        /// <summary>Засчитывать ли результат в рекорды (спарринг в боксе считает очки по-другому).</summary>
+        protected virtual bool CountsForRecord => true;
 
         /// <summary>Кнопка «Старт». Во время игры работает как «Заново».</summary>
         public void StartGame()
@@ -68,6 +111,7 @@ namespace VRSports.Core
         private IEnumerator CountdownRoutine()
         {
             SetScore(0);
+            SetRivalScore(0);
             TimeLeft = roundDuration;
             OnPrepareRound();
             SetState(ModeState.Countdown);
@@ -110,8 +154,17 @@ namespace VRSports.Core
             if (State != ModeState.Playing) return;
 
             OnGameFinished();
-            bool isRecord = SaveSystem.SubmitScore(ModeId, Score, HigherIsBetter);
+            bool isRecord = CountsForRecord && SaveSystem.SubmitScore(ModeId, Score, HigherIsBetter);
             SetState(ModeState.Finished);
+            if (HasRival)
+            {
+                // Дуэль: сравниваем счёт игрока и бота.
+                int diff = HigherIsBetter ? Score - RivalScore : RivalScore - Score;
+                string verdict = diff > 0 ? "ПОБЕДА!" : diff < 0 ? "Поражение" : "Ничья";
+                ShowMessage($"{verdict}  {Score} : {RivalScore}" + (isRecord ? "  Рекорд!" : ""));
+                Haptics.PulseBoth(diff > 0 ? 0.9f : 0.4f, 0.3f);
+                return;
+            }
             ShowMessage(isRecord ? $"Новый рекорд: {Score}!" : $"Итог: {Score}");
             Haptics.PulseBoth(isRecord ? 0.8f : 0.4f, 0.3f);
         }
@@ -154,5 +207,8 @@ namespace VRSports.Core
 
         /// <summary>Перед подсчётом итога (остановить спавн мишеней и т.п.).</summary>
         protected virtual void OnGameFinished() { }
+
+        /// <summary>Соперник включён/выключен/сменён (между партиями).</summary>
+        protected virtual void OnRivalChanged() { }
     }
 }

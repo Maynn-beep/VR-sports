@@ -69,6 +69,19 @@ namespace VRSports.Modes.Basketball
             _rb.MovePosition(_home + Vector3.right * (amplitude * Mathf.Sin(_phase)));
         }
 
+        /// <summary>
+        /// Где будет центр кольца через dt секунд. Движение — синусоида x = A·sin(φ + ω·t),
+        /// поэтому будущее положение считается точно. Так бот «берёт упреждение», как и человек,
+        /// который видит, куда едет кольцо.
+        /// </summary>
+        public Vector3 PredictRim(float dt)
+        {
+            Vector3 offset = rimCenter.position - transform.position;
+            if (_level == 0) return rimCenter.position;
+            float phase = _phase + speeds[_level] * dt;
+            return _home + Vector3.right * (amplitude * Mathf.Sin(phase)) + offset;
+        }
+
         internal void OnTopSensor(BasketballBall ball) => ball.TopSensorTime = Time.time;
 
         internal void OnBottomSensor(BasketballBall ball, Rigidbody rb)

@@ -147,6 +147,31 @@ namespace VRSports.Modes.Bowling
             transform.position = rackPoint.position;
         }
 
+        /// <summary>Бот держит шар в руке: шар кинематический и следует за кистью.</summary>
+        public void BotHold(Vector3 position)
+        {
+            _armed = false;
+            _rb.isKinematic = true;
+            _rb.position = position;
+            transform.position = position;
+        }
+
+        /// <summary>
+        /// Бросок бота: шар отпускается в точке position со скоростью velocity и вращением angular.
+        /// Дальше — та же физика, что и у броска игрока (трение по зонам, удары о кегли).
+        /// </summary>
+        public void BotLaunch(Vector3 position, Vector3 velocity, Vector3 angular)
+        {
+            _rb.isKinematic = false;
+            _rb.position = position;
+            transform.position = position;
+            _rb.linearVelocity = velocity;
+            _rb.angularVelocity = angular;
+            _armed = true; // как после отпускания рукой: бросок засчитается на линии заступа
+        }
+
+        public float Radius => ((SphereCollider)_col).radius;
+
         /// <summary>Пока шар катится, его нельзя подхватить лучом издалека.</summary>
         public void SetGrabbable(bool value) => _grab.enabled = value;
     }

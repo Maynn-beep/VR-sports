@@ -19,6 +19,8 @@ namespace VRSports.Modes.Basketball
         [SerializeField] private BasketballBall[] balls;
         [SerializeField] private Hoop hoop;
         [SerializeField] private TMP_Text comboText;
+        [SerializeField] private BasketballBot bot;
+        [SerializeField] private BasketballBall botBall;
 
         [Header("Правила")]
         [SerializeField] private float threePointRadius = 5.5f;
@@ -28,47 +30,67 @@ namespace VRSports.Modes.Basketball
 
         public override string ModeId => "basketball";
         public override string DisplayName => "Баскетбол";
+        public override bool SupportsRival => bot != null;
 
         private int _streak;
+        private int _rivalStreak;
         private bool _fire;
         private int _hoopLevel;
 
         public float ThreePointRadius => threePointRadius;
         private int Multiplier => _streak >= 6 ? 3 : _streak >= 3 ? 2 : 1;
+        private int RivalMultiplier => _rivalStreak >= 6 ? 3 : _rivalStreak >= 3 ? 2 : 1;
 
         private void Reset() => RoundDuration = 60f;
 
-        public void Setup(BasketballBall[] b, Hoop h, TMP_Text combo)
+        public void Setup(BasketballBall[] b, Hoop h, TMP_Text combo, BasketballBot rival, BasketballBall rivalBall)
         {
-            balls = b; hoop = h; comboText = combo;
+            balls = b; hoop = h; comboText = combo; bot = rival; botBall = rivalBall;
         }
 
         private void OnEnable()
         {
             if (hoop != null) hoop.Scored += OnBasket;
             if (balls != null) foreach (var b in balls) b.ShotMissed += OnMiss;
+            if (botBall != null) botBall.ShotMissed += OnMiss;
         }
 
         private void OnDisable()
         {
             if (hoop != null) hoop.Scored -= OnBasket;
             if (balls != null) foreach (var b in balls) b.ShotMissed -= OnMiss;
+            if (botBall != null) botBall.ShotMissed -= OnMiss;
         }
 
-        private void Start() => UpdateComboText();
+        private void Start()
+        {
+            UpdateComboText();
+            OnRivalChanged();
+        }
+
+        protected override void OnRivalChanged()
+        {
+            if (bot != null) bot.Show(HasRival);
+        }
 
         // ---------------------------------------------------------------- хуки SportModeBase
 
         protected override void OnPrepareRound()
         {
             _streak = 0;
+            _rivalStreak = 0;
             SetFire(false);
             SetHoopLevel(0);
             foreach (var b in balls) b.ReturnToRack();
+            if (HasRival) bot.Idle();
             UpdateComboText();
         }
 
-        protected override void OnGameStarted() => ShowMessage("Бросайте! У вас 60 секунд");
+        protected override void OnGameStarted()
+        {
+            ShowMessage(HasRival ? "Дуэль! Кто больше за 60 секунд" : "Бросайте! У вас 60 секунд");
+            if (HasRival) bot.Begin(Rival);
+        }
 
         protected override void OnGameUpdate()
         {
@@ -82,6 +104,7 @@ namespace VRSports.Modes.Basketball
 
         protected override void OnGameFinished()
         {
+            if (HasRival) bot.Stop();
             SetFire(false);
             SetHoopLevel(0);
             _streak = 0;
@@ -97,7 +120,18 @@ namespace VRSports.Modes.Basketball
 
             if (State != ModeState.Playing)
             {
-                ShowMessage("Попадание! Нажмите «Старт»");
+                if (!ball.IsRival) ShowMessage("Попадание! Нажмите «Старт»");
+                return;
+            }
+
+            if (ball.IsRival)
+            {
+                // Очки бота считаются по тем же правилам: 2/3 очка, своя серия, огненные мячи.
+                bool botThree = ball.ReleaseDistanceTo(hoop.HomeRimCenter) >= threePointRadius;
+                _rivalStreak++;
+                int botPts = (botThree ? 3 : 2) * RivalMultiplier * (_fire ? 2 : 1);
+                AddRivalScore(botPts);
+                ShowMessage(botThree ? $"Бот: трёхочковый +{botPts}" : $"Бот: попадание +{botPts}");
                 return;
             }
 
@@ -118,6 +152,7 @@ namespace VRSports.Modes.Basketball
         private void OnMiss(BasketballBall ball)
         {
             if (State != ModeState.Playing) return;
+            if (ball.IsRival) { _rivalStreak = 0; return; }
             if (_streak >= 3) ShowMessage("Промах — серия прервана");
             _streak = 0;
             UpdateComboText();
@@ -143,6 +178,7 @@ namespace VRSports.Modes.Basketball
         {
             _fire = on;
             foreach (var b in balls) b.SetFire(on);
+            if (botBall != null) botBall.SetFire(on);
         }
 
         private void UpdateComboText()

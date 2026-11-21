@@ -21,9 +21,11 @@ namespace VRSports.Modes.Archery
         [SerializeField] private Bow bow;
         [SerializeField] private ArcheryTarget[] targets;
         [SerializeField] private ClayThrower thrower;
+        [SerializeField] private ArcheryBot bot;
 
         public override string ModeId => "archery";
         public override string DisplayName => "Стрельба из лука";
+        public override bool SupportsRival => bot != null;
 
         private const int DiscPoints = 15;
 
@@ -61,19 +63,21 @@ namespace VRSports.Modes.Archery
         private int _tenStreak;
         private readonly List<Arrow> _arrows = new List<Arrow>();
 
-        public void Setup(Bow b, ArcheryTarget[] t, ClayThrower th)
+        public void Setup(Bow b, ArcheryTarget[] t, ClayThrower th, ArcheryBot rival)
         {
-            bow = b; targets = t; thrower = th;
+            bow = b; targets = t; thrower = th; bot = rival;
         }
 
         private void OnEnable()
         {
             if (bow != null) bow.ArrowShot += OnArrowShot;
+            if (bot != null) bot.ArrowShot += OnArrowShot;
         }
 
         private void OnDisable()
         {
             if (bow != null) bow.ArrowShot -= OnArrowShot;
+            if (bot != null) bot.ArrowShot -= OnArrowShot;
             ArcheryWind.Current = Vector3.zero;
         }
 
@@ -81,6 +85,12 @@ namespace VRSports.Modes.Archery
         {
             // До старта — тренировка: мишени первой волны, стрелы без ограничения.
             SetupWave(0, practice: true);
+            OnRivalChanged();
+        }
+
+        protected override void OnRivalChanged()
+        {
+            if (bot != null) bot.Show(HasRival);
         }
 
         // ---------------------------------------------------------------- хуки SportModeBase
@@ -94,6 +104,7 @@ namespace VRSports.Modes.Archery
             _waveRoutine = null;
             _tenStreak = 0;
             _inFlight = 0;
+            if (bot != null && HasRival) bot.Stop();
             SetupWave(0, practice: false);
             bow.ArrowsLeft = 0; // во время отсчёта стрелять нельзя
             bow.UpdateAmmoText();
@@ -103,6 +114,7 @@ namespace VRSports.Modes.Archery
         {
             bow.ArrowsLeft = Waves[0].Arrows;
             bow.UpdateAmmoText();
+            if (HasRival) bot.BeginWave(Rival, Waves[0].Arrows);
             ShowMessage($"Волна 1: {Waves[0].Name}");
         }
 
@@ -114,6 +126,7 @@ namespace VRSports.Modes.Archery
             if (_waveRoutine != null) StopCoroutine(_waveRoutine);
             _waveRoutine = null;
             thrower.StopAll();
+            if (bot != null && HasRival) bot.Stop();
             ArcheryWind.Current = Vector3.zero;
             bow.ArrowsLeft = -1;
             bow.UpdateAmmoText();
@@ -158,6 +171,7 @@ namespace VRSports.Modes.Archery
                 yield break;
             }
             SetupWave(_wave + 1, practice: false);
+            if (HasRival) bot.BeginWave(Rival, Waves[_wave].Arrows);
             ShowMessage($"Волна {_wave + 1}: {Waves[_wave].Name}");
             Haptics.PulseBoth(0.4f, 0.2f);
         }
@@ -181,6 +195,24 @@ namespace VRSports.Modes.Archery
         private void OnArrowLanded(Arrow arrow, ArcheryTarget target, Vector3 point)
         {
             _inFlight = Mathf.Max(0, _inFlight - 1);
+
+            if (arrow.IsRival)
+            {
+                // Попадание бота: те же правила подсчёта, очки — сопернику.
+                if (target != null)
+                {
+                    int r = target.ScoreFor(point);
+                    target.Flash();
+                    if (r > 0)
+                    {
+                        int pts = r + Mathf.FloorToInt(Vector3.Distance(arrow.LaunchPosition, point) / 10f);
+                        if (State == ModeState.Playing) AddRivalScore(pts);
+                        ShowMessage($"Бот: {r}  +{pts}");
+                    }
+                }
+                CheckWaveEnd();
+                return;
+            }
 
             if (target != null)
             {
@@ -211,6 +243,12 @@ namespace VRSports.Modes.Archery
 
         private void OnDiscHit(Arrow arrow, ClayDisc disc)
         {
+            if (arrow.IsRival)
+            {
+                if (State == ModeState.Playing) AddRivalScore(DiscPoints);
+                ShowMessage($"Бот разбил тарелочку +{DiscPoints}");
+                return;
+            }
             if (State == ModeState.Playing) AddScore(DiscPoints);
             ShowMessage($"Тарелочка! +{DiscPoints}");
             Haptics.PulseBoth(0.9f, 0.2f);
@@ -219,7 +257,9 @@ namespace VRSports.Modes.Archery
         private void CheckWaveEnd()
         {
             if (State != ModeState.Playing || _waveEnding) return;
-            if (bow.ArrowsLeft == 0 && _inFlight == 0) _waveRoutine = StartCoroutine(NextWaveRoutine());
+            // С соперником волна кончается, когда отстрелялись ОБА.
+            bool botDone = !HasRival || bot.ArrowsLeft == 0;
+            if (bow.ArrowsLeft == 0 && _inFlight == 0 && botDone) _waveRoutine = StartCoroutine(NextWaveRoutine());
         }
     }
 }

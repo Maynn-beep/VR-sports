@@ -161,24 +161,30 @@ namespace VRSports.EditorTools
                 Mat("Panel_Dark", new Color(0.12f, 0.14f, 0.2f)));
             const float z = -0.04f;
             var title = Text("Title", board, new Vector3(0, 2.65f, z), "", 1.6f, new Vector2(2.3f, 0.3f), Color.white);
-            var score = Text("Score", board, new Vector3(-0.55f, 2.25f, z), "", 1.4f, new Vector2(1.2f, 0.3f),
+            var score = Text("Score", board, new Vector3(-0.45f, 2.3f, z), "", 1.4f, new Vector2(1.4f, 0.3f),
                 new Color(0.5f, 1f, 0.6f));
-            var timer = Text("Timer", board, new Vector3(0.7f, 2.25f, z), "", 1.4f, new Vector2(0.8f, 0.3f), Color.white);
-            var best = Text("Best", board, new Vector3(0, 1.95f, z), "", 0.9f, new Vector2(2.3f, 0.2f),
+            var rival = Text("Rival", board, new Vector3(-0.45f, 2.1f, z), "", 1.0f, new Vector2(1.4f, 0.2f),
+                new Color(1f, 0.6f, 0.3f));
+            var timer = Text("Timer", board, new Vector3(0.75f, 2.25f, z), "", 1.4f, new Vector2(0.8f, 0.3f), Color.white);
+            var best = Text("Best", board, new Vector3(0, 1.93f, z), "", 0.9f, new Vector2(2.3f, 0.2f),
                 new Color(1f, 0.85f, 0.4f));
             var msg = Text("Message", board, new Vector3(0, 1.72f, z), "", 1.1f, new Vector2(2.3f, 0.25f),
                 new Color(0.75f, 0.85f, 1f));
-            board.gameObject.AddComponent<ScoreBoard>().Setup(mode, title, score, timer, best, msg);
+            board.gameObject.AddComponent<ScoreBoard>().Setup(mode, title, score, timer, best, msg, rival);
 
             // Пульт слева-спереди на уровне пояса.
             var standPos = layout.ControlsPosition;
             var stand = new GameObject("Controls").transform;
             stand.SetPositionAndRotation(standPos, Quaternion.LookRotation(standPos.normalized));
-            Prim(PrimitiveType.Cube, "Stand", stand, new Vector3(0, 0.42f, 0), new Vector3(0.5f, 0.84f, 0.3f),
+            Prim(PrimitiveType.Cube, "Stand", stand, new Vector3(0, 0.42f, 0), new Vector3(0.72f, 0.84f, 0.3f),
                 Mat("Stand", new Color(0.25f, 0.27f, 0.32f)));
-            var start = Button("StartButton", stand, new Vector3(-0.12f, 0.84f, 0), "Старт", new Color(0.3f, 0.8f, 0.4f));
-            var hub = Button("HubButton", stand, new Vector3(0.12f, 0.84f, 0), "В хаб", new Color(0.95f, 0.6f, 0.25f));
-            stand.gameObject.AddComponent<ModeControls>().Setup(mode, start, hub);
+            var start = Button("StartButton", stand, new Vector3(-0.23f, 0.84f, 0), "Старт", new Color(0.3f, 0.8f, 0.4f));
+            var rivalBtn = Button("RivalButton", stand, new Vector3(0f, 0.84f, 0), "Соперник", new Color(0.85f, 0.45f, 0.9f));
+            var rivalLabel = rivalBtn.transform.Find("Label").GetComponent<TMP_Text>();
+            rivalLabel.rectTransform.sizeDelta = new Vector2(0.4f, 0.2f);
+            rivalLabel.transform.localPosition = new Vector3(0, 0.14f, 0);
+            var hub = Button("HubButton", stand, new Vector3(0.23f, 0.84f, 0), "В хаб", new Color(0.95f, 0.6f, 0.25f));
+            stand.gameObject.AddComponent<ModeControls>().Setup(mode, start, hub, rivalBtn, rivalLabel);
 
             // «Начинка» конкретного вида спорта (дорожка, кольцо, мишени...).
             buildContent?.Invoke(mode);

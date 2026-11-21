@@ -38,6 +38,13 @@ namespace VRSports.Modes.Boxing
             if (Time.time - _lastHit < cooldown) return;
             Vector3 point = other.ClosestPoint(transform.position);
 
+            var zone = other.GetComponent<SparringZone>();
+            if (zone != null)
+            {
+                if (zone.Receive(this, Velocity, point)) _lastHit = Time.time;
+                return;
+            }
+
             var pad = other.GetComponentInParent<BoxingPad>();
             if (pad != null)
             {

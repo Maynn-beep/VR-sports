@@ -44,6 +44,9 @@ namespace VRSports.Modes.Archery
         public event Action<Arrow> ArrowShot;
 
         public float Draw { get; private set; }
+        public float MaxArrowSpeed => maxArrowSpeed;
+        public float MaxDraw => maxDraw;
+        public Arrow ArrowTemplate => arrowTemplate;
         public bool IsHeld => _grab.isSelected;
 
         private XRGrabInteractable _grab;

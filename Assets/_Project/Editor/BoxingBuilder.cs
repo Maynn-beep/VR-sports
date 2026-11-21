@@ -83,7 +83,7 @@ namespace VRSports.EditorTools
             }
 
             // ---------- тренажёр: колонна + поднимаемая под рост «голова» с лапами
-            Prim(PrimitiveType.Cylinder, "Column", null, new Vector3(0, 1.15f, ColumnZ), new Vector3(0.16f, 1.15f, 0.16f), dark);
+            var column = Prim(PrimitiveType.Cylinder, "Column", null, new Vector3(0, 1.15f, ColumnZ), new Vector3(0.16f, 1.15f, 0.16f), dark);
             var padRig = new GameObject("PadRig").transform;
             padRig.position = new Vector3(0, 1.5f, 0);
 
@@ -128,7 +128,7 @@ namespace VRSports.EditorTools
 
             var combo = Text("Combo", null, new Vector3(0, 2.45f, ColumnZ - 0.12f), "", 2.2f, new Vector2(2f, 0.4f),
                 new Color(1f, 0.85f, 0.3f));
-            Text("Legend", null, new Vector3(0, 2.15f, ColumnZ - 0.12f),
+            var legend = Text("Legend", null, new Vector3(0, 2.15f, ColumnZ - 0.12f),
                 "<color=#3D8CFF>синий — левой</color>    <color=#FF4033>красный — правой</color>", 1.1f,
                 new Vector2(2.4f, 0.25f), Color.white);
 
@@ -167,7 +167,82 @@ namespace VRSports.EditorTools
             AttachGlove(rig, "Left Controller", Hand.Left, gloveMesh, Mat("Glove_Blue", new Color(0.2f, 0.45f, 0.95f)));
             AttachGlove(rig, "Right Controller", Hand.Right, gloveMesh, Mat("Glove_Red", new Color(0.9f, 0.15f, 0.12f)));
 
-            mode.Setup(pads, padRig, dodge, combo);
+            // ---------- робот для спарринга (виден, когда выбран соперник)
+            var sparring = BuildSparringBot(gloveMesh);
+
+            mode.Setup(pads, padRig, dodge, combo, sparring,
+                new[] { column, padRig.gameObject, combo.gameObject, legend.gameObject });
+        }
+
+        /// <summary>
+        /// Робот-боксёр: вместо кистей — перчатки, длинные руки (размах), зоны попадания:
+        /// голова и корпус (урон) и перчатки (блок). Над головой — полоски здоровья робота и игрока.
+        /// </summary>
+        private static SparringBot BuildSparringBot(Mesh gloveMesh)
+        {
+            var botGlove = Mat("Glove_Bot", new Color(0.15f, 0.15f, 0.17f));
+            var cuff = Mat("Glove_Cuff", new Color(0.95f, 0.95f, 0.95f));
+            var avatar = RobotBuilder.Build("SparringBot", new Vector3(0, 0, 0.75f), Quaternion.LookRotation(Vector3.back),
+                new Color(0.95f, 0.45f, 0.1f), gloveMesh, new[] { botGlove, cuff }, new[] { botGlove, cuff });
+            avatar.SetArmSegment(0.36f);
+            var root = avatar.transform;
+            var rb = root.gameObject.AddComponent<Rigidbody>();
+            rb.isKinematic = true;  // составной триггер робота движется вместе с ним
+            rb.useGravity = false;
+            var bot = root.gameObject.AddComponent<SparringBot>();
+
+            // Зоны попадания.
+            var head = root.Find("Visual/Head");
+            var hs = head.gameObject.AddComponent<SphereCollider>();
+            hs.isTrigger = true;
+            hs.radius = 0.13f;
+            head.gameObject.AddComponent<SparringZone>().Setup(bot, ZoneKind.Head);
+
+            var body = new GameObject("BodyZone");
+            body.transform.SetParent(root.Find("Visual"), false);
+            body.transform.localPosition = new Vector3(0, RobotBuilder.HeadY - 0.37f, 0);
+            var bc = body.AddComponent<BoxCollider>();
+            bc.isTrigger = true;
+            bc.size = new Vector3(0.42f, 0.4f, 0.26f);
+            body.AddComponent<SparringZone>().Setup(bot, ZoneKind.Body);
+
+            foreach (var hand in new[] { avatar.Hand(AvatarSide.Left), avatar.Hand(AvatarSide.Right) })
+            {
+                var gs = hand.gameObject.AddComponent<SphereCollider>();
+                gs.isTrigger = true;
+                gs.radius = 0.07f;
+                hand.gameObject.AddComponent<SparringZone>().Setup(bot, ZoneKind.Guard);
+            }
+
+            // Полоски здоровья над головой. Держатель развёрнут к игроку.
+            var bars = new GameObject("HealthBars").transform;
+            bars.SetParent(root, false);
+            bars.localPosition = new Vector3(0, RobotBuilder.HeadY + 0.42f, 0);
+            bars.localRotation = Quaternion.Euler(0, 180f, 0);
+            var botBar = Bar(bars, "BotHP", 0.07f, "Робот", new Color(0.95f, 0.3f, 0.2f));
+            var playerBar = Bar(bars, "PlayerHP", -0.04f, "Вы", new Color(0.3f, 0.9f, 0.4f));
+
+            bot.Setup(avatar, botBar, playerBar);
+            RobotBuilder.Unstatic(root);
+            return bot;
+        }
+
+        private static HealthBar Bar(Transform parent, string name, float y, string label, Color color)
+        {
+            const float w = 0.6f;
+            var holder = new GameObject(name).transform;
+            holder.SetParent(parent, false);
+            holder.localPosition = new Vector3(0, y, 0);
+            var bg = Prim(PrimitiveType.Cube, "Back", holder, new Vector3(0, 0, 0.005f), new Vector3(w + 0.02f, 0.07f, 0.01f),
+                Mat("Panel_Dark", new Color(0.12f, 0.14f, 0.2f)));
+            Object.DestroyImmediate(bg.GetComponent<Collider>());
+            var fill = Prim(PrimitiveType.Cube, "Fill", holder, Vector3.zero, new Vector3(w, 0.05f, 0.012f),
+                Mat("HP_" + ColorUtility.ToHtmlStringRGB(color), color));
+            Object.DestroyImmediate(fill.GetComponent<Collider>());
+            Text("Label", holder, new Vector3(-w / 2f - 0.12f, 0, -0.01f), label, 0.6f, new Vector2(0.22f, 0.07f), Color.white);
+            var bar = holder.gameObject.AddComponent<HealthBar>();
+            bar.Setup(fill.transform, w);
+            return bar;
         }
 
         private static void AttachGlove(Transform rig, string controllerName, Hand hand, Mesh mesh, Material color)
