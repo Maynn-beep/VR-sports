@@ -214,6 +214,19 @@ namespace VRSports.EditorTools
                 hand.gameObject.AddComponent<SparringZone>().Setup(bot, ZoneKind.Guard);
             }
 
+            // Предплечья тоже блокируют: в стойке они висят перед корпусом, как у настоящего боксёра
+            // («локти прикрывают печень»). Цилиндр-примитив: высота 2 по Y, капсула растягивается вместе с ним.
+            foreach (var name in new[] { "ForeArm_L", "ForeArm_R" })
+            {
+                var arm = root.Find(name);
+                var cc = arm.gameObject.AddComponent<CapsuleCollider>();
+                cc.isTrigger = true;
+                cc.direction = 1;
+                cc.height = 2f;
+                cc.radius = 1.1f;   // ×0.065 масштаба = ~7 см
+                arm.gameObject.AddComponent<SparringZone>().Setup(bot, ZoneKind.Guard);
+            }
+
             // Полоски здоровья над головой. Держатель развёрнут к игроку.
             var bars = new GameObject("HealthBars").transform;
             bars.SetParent(root, false);

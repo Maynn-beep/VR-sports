@@ -53,7 +53,13 @@ namespace VRSports.Modes.Boxing
         private float _headY = 1.6f;
         private float _round = 1f;   // темп растёт от раунда к раунду
         private Coroutine _brain;
+        private Coroutine _parry;
         private float _sway;
+        private bool _counterRequested;
+        private bool _guardLow;          // стойка опущена: закрыт корпус, открыта голова
+        private float _bodyPressure, _headPressure;
+        private float _lastCounter = -10f;
+        private readonly bool[] _punchSeen = new bool[4];
 
         private const float MaxHp = 100f;
 
@@ -76,6 +82,8 @@ namespace VRSports.Modes.Boxing
         {
             _head = head;
             _headY = headY;
+            // Перчатки ищем заново перед каждым боем: контроллеры могли переподключиться.
+            _gloves = FindObjectsByType<BoxingGlove>(FindObjectsInactive.Include, FindObjectsSortMode.None);
             Stop();
             BotHp = PlayerHp = MaxHp;
             botBar.Set(1f, true);
@@ -99,6 +107,11 @@ namespace VRSports.Modes.Boxing
         {
             if (_brain != null) StopCoroutine(_brain);
             _brain = null;
+            if (_parry != null) StopCoroutine(_parry);
+            _parry = null;
+            _counterRequested = false;
+            _guardLow = false;
+            _bodyPressure = _headPressure = 0f;
             Current = Phase.Idle;
             avatar.SetGlow(new Color(0.2f, 0.9f, 1f));
             GuardPose(3f);
@@ -121,6 +134,10 @@ namespace VRSports.Modes.Boxing
             Vector3 target = Clamp(headFlat + dir * distance + side) + Vector3.up * (_headY - headHeight);
             avatar.MoveTo(target, Current == Phase.Strike ? 0.3f : 1.2f);
             avatar.LookAt(_head.position);
+            UpdateParry();
+            // «Память» об ударах игрока затухает: старые удары перестают влиять на стойку.
+            _bodyPressure = Mathf.Max(0f, _bodyPressure - Time.deltaTime * 0.3f);
+            _headPressure = Mathf.Max(0f, _headPressure - Time.deltaTime * 0.3f);
         }
 
         // ---------------------------------------------------------------- поведение
@@ -129,47 +146,113 @@ namespace VRSports.Modes.Boxing
         {
             while (true)
             {
-                // 1. Стойка.
+                // 1. Стойка. Ожидание прерывается, если робот решил контратаковать.
                 Current = Phase.Guard;
                 GuardPose(3f);
-                float wait = Rival.Pick(_level, 2.6f, 1.9f, 1.4f) / _round * Random.Range(0.7f, 1.3f);
-                yield return new WaitForSeconds(wait);
+                float wait = Rival.Pick(_level, 2.6f, 1.6f, 1.1f) / _round * Random.Range(0.7f, 1.3f);
+                bool counter = false;
+                for (float t = 0f; t < wait; t += Time.deltaTime)
+                {
+                    if (_counterRequested) { counter = true; break; }
+                    yield return null;
+                }
+                _counterRequested = false;
 
-                // 2. Замах: рука отводится назад, глаза краснеют — сигнал игроку.
-                Current = Phase.Windup;
+                // 2–3. Атака: одиночный удар или серия (у сильного робота — «двойка» обеими руками).
                 var side = Random.value < 0.5f ? AvatarSide.Left : AvatarSide.Right;
-                float sx = side == AvatarSide.Left ? -1f : 1f;
-                avatar.SetGlow(new Color(1f, 0.15f, 0.1f), 3f);
-                avatar.SetHandLocal(side, new Vector3(sx * 0.2f, headHeight - 0.1f, -0.05f), 1.2f);
-                yield return new WaitForSeconds(Rival.Pick(_level, 0.85f, 0.65f, 0.48f) / Mathf.Sqrt(_round));
+                int punches = Random.value < Rival.Pick(_level, 0f, 0.25f, 0.45f) ? 2 : 1;
+                for (int i = 0; i < punches; i++)
+                {
+                    // Замах: рука отводится назад, глаза краснеют — сигнал игроку.
+                    // Контратака и второй удар серии — с коротким замахом (меньше времени на реакцию).
+                    Current = Phase.Windup;
+                    float sx = side == AvatarSide.Left ? -1f : 1f;
+                    avatar.SetGlow(new Color(1f, 0.15f, 0.1f), 3f);
+                    avatar.SetHandLocal(side, new Vector3(sx * 0.2f, headHeight - 0.1f, -0.05f), 1.6f);
+                    float windup = Rival.Pick(_level, 0.85f, 0.55f, 0.4f) / Mathf.Sqrt(_round);
+                    if (counter || i > 0) windup *= 0.6f;
+                    yield return new WaitForSeconds(windup);
 
-                // 3. Удар — прямой в голову (в точку, где голова была в начале удара).
-                Current = Phase.Strike;
-                Vector3 aim = _head.position;
-                Vector3 from = avatar.Hand(side).position;
-                avatar.SetHandWorld(side, aim, 6.5f);
-                float t0 = Time.time;
-                while (!avatar.HandArrived(side) && Time.time - t0 < 0.35f) yield return null;
-                ResolveStrike(aim, from);
-                avatar.SetGlow(new Color(0.2f, 0.9f, 1f));
+                    // Удар — прямой в голову (в точку, где голова была в начале удара).
+                    Current = Phase.Strike;
+                    Vector3 aim = _head.position;
+                    Vector3 from = avatar.Hand(side).position;
+                    avatar.SetHandWorld(side, aim, 6.5f);
+                    float t0 = Time.time;
+                    while (!avatar.HandArrived(side) && Time.time - t0 < 0.35f) yield return null;
+                    ResolveStrike(aim, from);
+                    avatar.SetGlow(new Color(0.2f, 0.9f, 1f));
+                    GuardPose(4f, side);   // ударная рука возвращается в защиту
+                    side = side == AvatarSide.Left ? AvatarSide.Right : AvatarSide.Left;
+                }
 
-                // 4. Раскрылся: перчатки опущены — окно для контратаки игрока.
+                // 4. Раскрылся: перчатки опущены — окно для контратаки игрока (голова открыта).
                 Current = Phase.Open;
                 avatar.SetGlow(new Color(1f, 0.85f, 0.2f), 2.5f);
                 avatar.SetHandLocal(AvatarSide.Left, new Vector3(-0.22f, headHeight - 0.5f, 0.12f), 2.5f);
                 avatar.SetHandLocal(AvatarSide.Right, new Vector3(0.22f, headHeight - 0.5f, 0.12f), 2.5f);
-                yield return new WaitForSeconds(Rival.Pick(_level, 1.2f, 0.85f, 0.55f));
+                yield return new WaitForSeconds(Rival.Pick(_level, 1.2f, 0.7f, 0.45f));
                 avatar.SetGlow(new Color(0.2f, 0.9f, 1f));
             }
         }
 
+        // ---------------------------------------------------------------- защита робота
+
+        /// <summary>
+        /// Парирование: робот видит летящий кулак игрока (скорость к роботу больше 2 м/с, ближе 60 см)
+        /// и с вероятностью, зависящей от уровня, через время реакции подставляет ближнюю перчатку
+        /// на линию удара. Перчатка робота — зона блока, поэтому удар физически упирается в неё.
+        /// Каждый удар оценивается один раз: пока кулак не отведён назад, второй попытки нет.
+        /// </summary>
+        private void UpdateParry()
+        {
+            if (Current != Phase.Guard || _gloves == null) return;
+            Vector3 center = avatar.transform.TransformPoint(new Vector3(0f, headHeight - 0.25f, 0f));
+            for (int i = 0; i < _gloves.Length && i < _punchSeen.Length; i++)
+            {
+                var g = _gloves[i];
+                if (g == null || !g.isActiveAndEnabled) continue;
+                Vector3 toBot = center - g.transform.position;
+                float dist = toBot.magnitude;
+                float approach = Vector3.Dot(g.Velocity, toBot / Mathf.Max(dist, 1e-4f));
+                if (approach < 0.5f) { _punchSeen[i] = false; continue; }   // рука уходит назад — новый удар
+                if (_punchSeen[i] || approach < 2f || dist > 0.6f) continue;
+                _punchSeen[i] = true;
+                if (_parry != null || Random.value > Rival.Pick(_level, 0.15f, 0.45f, 0.7f)) continue;
+                _parry = StartCoroutine(Parry(g));
+            }
+        }
+
+        private IEnumerator Parry(BoxingGlove glove)
+        {
+            yield return new WaitForSeconds(Rival.Pick(_level, 0.2f, 0.1f, 0.05f)); // время реакции
+            if (Current == Phase.Guard && glove != null)
+            {
+                // Ближняя к кулаку рука робота перехватывает его в 22 см перед корпусом или головой.
+                Vector3 local = avatar.transform.InverseTransformPoint(glove.transform.position);
+                var hand = local.x < 0f ? AvatarSide.Left : AvatarSide.Right;
+                float y = Mathf.Clamp(local.y, headHeight - 0.55f, headHeight);
+                float x = Mathf.Clamp(local.x * 0.5f, -0.15f, 0.15f);
+                avatar.SetHandLocal(hand, new Vector3(x, y, 0.22f), 7f);
+                yield return new WaitForSeconds(0.35f);
+                if (Current == Phase.Guard) GuardPose(4f);
+            }
+            _parry = null;
+        }
+
         /// <summary>Стойка: перчатки перед лицом. У лёгкого робота — ниже и шире (дыры в защите).</summary>
-        private void GuardPose(float speed)
+        private void GuardPose(float speed, AvatarSide? only = null)
         {
             float x = Rival.Pick(_level, 0.14f, 0.11f, 0.085f);
             float y = headHeight - Rival.Pick(_level, 0.17f, 0.1f, 0.05f);
-            avatar.SetHandLocal(AvatarSide.Left, new Vector3(-x, y, 0.2f), speed);
-            avatar.SetHandLocal(AvatarSide.Right, new Vector3(x, y, 0.2f), speed);
+            if (_guardLow)
+            {
+                // Низкая стойка: перчатки и предплечья перед корпусом, голова открыта.
+                x = Rival.Pick(_level, 0.13f, 0.1f, 0.09f);
+                y = headHeight - 0.38f;
+            }
+            if (only != AvatarSide.Right) avatar.SetHandLocal(AvatarSide.Left, new Vector3(-x, y, 0.2f), speed);
+            if (only != AvatarSide.Left) avatar.SetHandLocal(AvatarSide.Right, new Vector3(x, y, 0.2f), speed);
         }
 
         private void ResolveStrike(Vector3 aim, Vector3 from)
@@ -208,6 +291,15 @@ namespace VRSports.Modes.Boxing
             float strength = Mathf.Clamp01(speed / 7f);
             glove.Feedback(strength);
 
+            // Контратака: робот отвечает на удары игрока (по защите или нет), если сам в стойке.
+            // Это наказывает за «молотилку» — серию ударов без защиты.
+            if (Current == Phase.Guard && Time.time - _lastCounter > 1.2f &&
+                Random.value < Rival.Pick(_level, 0.1f, 0.35f, 0.6f))
+            {
+                _counterRequested = true;
+                _lastCounter = Time.time;
+            }
+
             if (zone.Kind == ZoneKind.Guard)
             {
                 Blocked?.Invoke();
@@ -222,6 +314,30 @@ namespace VRSports.Modes.Boxing
             Vector3 push = dir * (zone.Kind == ZoneKind.Head ? 0.07f : 0.04f) * strength;
             avatar.Knock(push);
             PlayerLanded?.Invoke(dmg, zone.Kind);
+            Adapt(zone.Kind);
+        }
+
+        /// <summary>
+        /// Адаптация к игроку. Робот «запоминает», куда его бьют: каждое попадание добавляет +1
+        /// к «давлению» на голову или корпус, давление затухает на 0,3 в секунду.
+        /// Если игрок долбит в одно место (давление ≥ порога), робот перестраивает стойку:
+        /// бьют в корпус — опускает перчатки и закрывает корпус (голова открывается),
+        /// бьют в голову — поднимает. Порог: лёгкий 4, средний 2, сложный 1 удар.
+        /// Так однообразная «молотилка» перестаёт работать — приходится чередовать голову и корпус,
+        /// как в настоящем боксе.
+        /// </summary>
+        private void Adapt(ZoneKind hit)
+        {
+            float threshold = Rival.Pick(_level, 4f, 2f, 1f);
+            if (hit == ZoneKind.Body) _bodyPressure += 1f; else _headPressure += 1f;
+
+            bool wantLow = _guardLow;
+            if (!_guardLow && _bodyPressure >= threshold) { wantLow = true; _bodyPressure = 0f; }
+            else if (_guardLow && _headPressure >= threshold) { wantLow = false; _headPressure = 0f; }
+            if (wantLow == _guardLow) return;
+
+            _guardLow = wantLow;
+            if (Current == Phase.Guard) GuardPose(5f);
         }
 
         // ---------------------------------------------------------------- геометрия

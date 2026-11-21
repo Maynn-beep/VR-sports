@@ -103,15 +103,25 @@ namespace VRSports.Modes.Bowling
             var release = new Vector3(Mathf.Clamp(handPos.x, -0.4f, 0.4f), r + 0.003f, foulZ - 0.25f);
 
             float aimX = firstRoll ? 0.06f : SpareAim();
-            float sigmaX = Rival.Pick(level, 0.16f, 0.085f, 0.04f);
-            float sigmaV = Rival.Pick(level, 0.5f, 0.3f, 0.15f);
-            aimX = Mathf.Clamp(aimX + Rival.Gaussian(sigmaX), -0.6f, 0.6f);
+
+            // «Неудачный бросок»: рука дрогнула — шар уходит далеко от прицела (часто в жёлоб).
+            // У новичка такое бывает часто, у мастера — почти никогда. Это делает результат бота
+            // разнообразным: то страйк, то 2–3 кегли, то «мимо».
+            float badChance = Rival.Pick(level, 0.35f, 0.15f, 0.03f);
+            if (Random.value < badChance)
+                aimX += (Random.value < 0.5f ? -1f : 1f) * Random.Range(0.3f, 0.75f);
+            else
+                aimX += Rival.Gaussian(Rival.Pick(level, 0.25f, 0.13f, 0.04f));
+            aimX = Mathf.Clamp(aimX, -0.75f, 0.75f);
 
             var target = new Vector3(aimX, release.y, headPinZ);
             Vector3 dir = (target - release).normalized;
-            float speed = Rival.Pick(level, 7.0f, 7.6f, 8.0f) + Rival.Gaussian(sigmaV);
+            float speed = Rival.Pick(level, 5.6f, 6.8f, 8.0f) + Rival.Gaussian(Rival.Pick(level, 1.0f, 0.6f, 0.15f));
+            speed = Mathf.Max(3.5f, speed);
             Vector3 v = dir * speed;
             Vector3 w = Vector3.Cross(Vector3.up, v) / r;   // качение без проскальзывания
+            // Случайная боковая закрутка: на сухом участке дорожки шар непредсказуемо уходит в дугу.
+            w += dir * Rival.Gaussian(Rival.Pick(level, 5f, 3f, 0.5f));
             ball.BotLaunch(release, v, w);
         }
 

@@ -108,10 +108,13 @@ namespace VRSports.Modes.Archery
 
                 // 3. Окончательный прицел — с упреждением и ошибкой, выстрел.
                 if (Solve(target, out Vector3 aim, out _)) _aim = aim;
-                float sigma = Rival.Pick(_level, 0.7f, 0.4f, 0.2f) * (isDisc ? 1.3f : 1f);
+                float sigma = Rival.Pick(_level, 1.6f, 0.85f, 0.2f)
+                              * (isDisc ? Rival.Pick(_level, 1.6f, 1.4f, 1.3f) : 1f);
                 _aim = Rival.Scatter(_aim, sigma).normalized;
+                // «Сорвал выстрел»: отпустил тетиву раньше времени — стрела летит медленнее и падает раньше.
+                float power = Random.value < Rival.Pick(_level, 0.2f, 0.08f, 0f) ? Random.Range(0.65f, 0.85f) : 1f;
                 yield return null; // кадр, чтобы стрела встала по новому направлению
-                Release();
+                Release(power);
 
                 yield return new WaitForSeconds(Rival.Pick(_level, 2.6f, 2.0f, 1.5f));
             }
@@ -145,7 +148,7 @@ namespace VRSports.Modes.Archery
             return false;
         }
 
-        private void Release()
+        private void Release(float power)
         {
             var arrow = _nocked;
             _nocked = null;
@@ -153,7 +156,7 @@ namespace VRSports.Modes.Archery
             ArrowsLeft--;
             UpdateLabel();
             arrow.transform.SetPositionAndRotation(NockPosition(1f), Quaternion.LookRotation(_aim));
-            arrow.Launch(_aim * playerBow.MaxArrowSpeed);
+            arrow.Launch(_aim * (playerBow.MaxArrowSpeed * power));
             ArrowShot?.Invoke(arrow);
         }
 
@@ -214,7 +217,9 @@ namespace VRSports.Modes.Archery
                 Vector3 pitchAxis = Vector3.Cross(dir, Vector3.up).normalized;
                 dir = Quaternion.AngleAxis(Mathf.Atan2(dy, dist) * Mathf.Rad2Deg, pitchAxis) * dir; // ось dir×up: «+» — вверх
 
-                aimPoint = target(flight); // упреждение для движущейся цели
+                // Упреждение для движущейся цели. Новичок недооценивает движение цели:
+                // берёт только часть упреждения (35% / 70% / 100%).
+                aimPoint = target(flight * Rival.Pick(_level, 0.35f, 0.7f, 1f));
             }
             return true;
         }

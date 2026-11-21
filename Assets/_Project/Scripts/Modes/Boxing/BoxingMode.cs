@@ -296,7 +296,7 @@ namespace VRSports.Modes.Boxing
 
         private void OnBotBlocked()
         {
-            if (State == ModeState.Playing) ShowMessage("Блок — обойдите защиту (хук, апперкот, корпус)");
+            if (State == ModeState.Playing) ShowMessage("Блок! Бейте, когда робот раскрылся после удара");
         }
 
         private void OnBotStruck(float dmg, string what)
