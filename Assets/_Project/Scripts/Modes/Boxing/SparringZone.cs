@@ -29,7 +29,8 @@ namespace VRSports.Modes.Boxing
             if (n.sqrMagnitude < 1e-6f) n = velocity;
             n.Normalize();
             float into = Vector3.Dot(velocity, n);
-            if (into < 1.5f || into < 0.5f * velocity.magnitude) return false;
+            float minSpeed = 1.5f * VRSports.Core.GameSettings.Pick(1f, 0.67f); // казуально — 1 м/с
+            if (into < minSpeed || into < 0.5f * velocity.magnitude) return false;
             bot.ReceivePunch(this, glove, into, point);
             return true;
         }

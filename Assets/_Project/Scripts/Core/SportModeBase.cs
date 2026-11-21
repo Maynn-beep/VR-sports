@@ -161,7 +161,7 @@ namespace VRSports.Core
             if (State != ModeState.Playing) return;
 
             OnGameFinished();
-            bool isRecord = CountsForRecord && SaveSystem.SubmitScore(ModeId, Score, HigherIsBetter);
+            bool isRecord = CountsForRecord && SaveSystem.SubmitScore(GameSettings.RecordKey(ModeId), Score, HigherIsBetter);
             SetState(ModeState.Finished);
             if (HasRival)
             {

@@ -28,6 +28,8 @@ namespace VRSports.Modes.Archery
         [SerializeField] private Arrow arrowTemplate;    // неактивный образец стрелы
         [SerializeField] private Transform rack;         // подставка, куда лук возвращается
         [SerializeField] private TMP_Text ammoText;
+        [Tooltip("Траектория-подсказка (только казуальная сложность).")]
+        [SerializeField] private LineRenderer aimLine;
 
         [Header("Физика лука")]
         [Tooltip("Макс. натяжение, м. Меньше длины стрелы (0.85 м), чтобы наконечник не уходил за рукоять.")]
@@ -62,6 +64,11 @@ namespace VRSports.Modes.Archery
         {
             nock = n; stringLine = line; topTip = top; bottomTip = bottom; stringRest = rest;
             arrowTemplate = template; rack = rackPoint; ammoText = ammo;
+        }
+
+        public void SetAimLine(LineRenderer line)
+        {
+            aimLine = line;
         }
 
         private void Awake()
@@ -177,9 +184,45 @@ namespace VRSports.Modes.Archery
             {
                 _nocked.transform.SetPositionAndRotation(nockWorld, transform.rotation);
             }
+            UpdateAimLine(nockWorld);
 
             UpdateString(nockLocal);
             ReturnIfDropped();
+        }
+
+        /// <summary>
+        /// Казуальная сложность: пунктир, куда полетит стрела при текущем натяжении.
+        /// Считается той же моделью, что и настоящий полёт (Arrow.FixedUpdate): гравитация,
+        /// анизотропное сопротивление и ветер; наконечник = хвостовик + L·(направление скорости).
+        /// Линия обрывается на земле или через 2,5 с полёта.
+        /// </summary>
+        private void UpdateAimLine(Vector3 tail)
+        {
+            if (aimLine == null) return;
+            bool show = GameSettings.Casual && _nocked != null && Draw >= minDrawToShoot;
+            aimLine.enabled = show;
+            if (!show) return;
+
+            const int maxPoints = 60;
+            const float dt = 1f / 24f;
+            Vector3 v = transform.forward * (maxArrowSpeed * (Draw / maxDraw));
+            Vector3 axis = v.normalized;
+            float len = arrowTemplate.TipOffset;
+            int n = 0;
+            aimLine.positionCount = maxPoints;
+            for (; n < maxPoints; n++)
+            {
+                aimLine.SetPosition(n, tail + axis * len);
+                Vector3 rel = v - ArcheryWind.Current;
+                Vector3 relAx = Vector3.Dot(rel, axis) * axis;
+                Vector3 relSide = rel - relAx;
+                v += (Physics.gravity - arrowTemplate.DragAxial * rel.magnitude * relAx
+                      - arrowTemplate.DragSide * relSide.magnitude * relSide) * dt;
+                tail += v * dt;
+                axis = v.normalized;
+                if (tail.y + axis.y * len < 0f) { n++; break; }
+            }
+            aimLine.positionCount = n;
         }
 
         /// <summary>Вибрация нарастает с натяжением — игрок «чувствует» силу тетивы.</summary>

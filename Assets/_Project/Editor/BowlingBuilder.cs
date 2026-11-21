@@ -213,7 +213,20 @@ namespace VRSports.EditorTools
             var bot = avatar.gameObject.AddComponent<BowlingBot>();
             bot.Setup(avatar, ball, pins, rackPoint, FoulZ, HeadPinZ);
 
-            mode.Setup(ball, pins, sheet, bot);
+            // ---------- бортики для казуальной сложности (включает BowlingMode)
+            var bumpers = new GameObject("Bumpers").transform;
+            var bumperMat = Mat("Bumper", new Color(0.95f, 0.75f, 0.2f));
+            var bumperPhys = PhysMat("Bumper", 0.2f, 0.5f);
+            foreach (float side in new[] { -1f, 1f })
+            {
+                // Над жёлобом, вплотную к краю дорожки: шар отскакивает обратно на дорожку.
+                var b = Prim(PrimitiveType.Cube, "Bumper", bumpers,
+                    new Vector3(side * (LaneHalfW + 0.04f), 0.09f, (FoulZ + DeckEndZ) / 2f),
+                    new Vector3(0.06f, 0.18f, DeckEndZ - FoulZ), bumperMat);   // до конца площадки кеглей
+                b.GetComponent<Collider>().sharedMaterial = bumperPhys;
+            }
+
+            mode.Setup(ball, pins, sheet, bot, bumpers.gameObject);
         }
 
         private static void LaneSegment(Transform root, string name, float z0, float z1, Material mat)

@@ -90,6 +90,16 @@ namespace VRSports.EditorTools
             line.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
             line.SetPositions(new[] { top.localPosition, rest.localPosition, bottom.localPosition });
 
+            // Траектория-подсказка для казуальной сложности (мировые координаты, включает Bow).
+            var aim = Child(bowGo.transform, "AimLine", Vector3.zero).gameObject.AddComponent<LineRenderer>();
+            aim.useWorldSpace = true;
+            aim.positionCount = 0;
+            aim.widthMultiplier = 0.012f;
+            aim.widthCurve = AnimationCurve.Linear(0, 1, 1, 0.4f);
+            aim.sharedMaterial = UnlitMat("AimLine", new Color(0.4f, 1f, 0.5f));
+            aim.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
+            aim.enabled = false;
+
             var ammo = Text("Ammo", bowGo.transform, new Vector3(0.09f, -0.12f, 0f), "", 0.35f, new Vector2(0.3f, 0.06f),
                 new Color(1f, 0.9f, 0.5f));
 
@@ -102,6 +112,7 @@ namespace VRSports.EditorTools
 
             var bow = bowGo.AddComponent<Bow>();
             bow.Setup(nockInteractable, line, top, bottom, rest, arrowTemplate, rack, ammo);
+            bow.SetAimLine(aim);
 
             // ---------- мишени
             var faceMesh = LoadMesh(Models + "TargetFace.fbx");

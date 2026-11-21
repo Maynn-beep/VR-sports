@@ -26,6 +26,14 @@ namespace VRSports.Modes.Basketball
         [SerializeField] private TrailRenderer fireTrail;
         [Tooltip("Мяч робота-соперника: игрок его не берёт, очки идут боту.")]
         [SerializeField] private bool isRival;
+        [Tooltip("Кольцо — для доводки броска в казуальной сложности.")]
+        [SerializeField] private Hoop hoop;
+
+        [Header("Казуальная сложность: доводка броска")]
+        [Tooltip("Насколько скорость броска подтягивается к идеальной (0 — нет помощи, 1 — точно в кольцо).")]
+        [SerializeField] private float shotAssist = 0.9f;
+        [Tooltip("Помощь только если бросок примерно в сторону кольца (градусы).")]
+        [SerializeField] private float assistMaxYaw = 30f;
 
         [Header("Аэродинамика")]
         [SerializeField] private float dragK = 0.0130f;    // ½·1.225·0.47·π·0.12²
@@ -60,9 +68,9 @@ namespace VRSports.Modes.Basketball
         private float _lastFloorContact = -10f;
         private float _floorTimer;
 
-        public void Setup(Transform spawn, Material fire, TrailRenderer trail, bool rival = false)
+        public void Setup(Transform spawn, Material fire, TrailRenderer trail, Hoop h, bool rival = false)
         {
-            spawnPoint = spawn; fireMaterial = fire; fireTrail = trail; isRival = rival;
+            spawnPoint = spawn; fireMaterial = fire; fireTrail = trail; hoop = h; isRival = rival;
         }
 
         private void Awake()
@@ -130,6 +138,7 @@ namespace VRSports.Modes.Basketball
             // Медленно отпущенный мяч — не бросок, а просто «положили».
             ShotActive = _rb.linearVelocity.magnitude > 2f;
             if (ShotActive) ApplyBackspinAssist();
+            if (ShotActive && !isRival && VRSports.Core.GameSettings.Casual) ApplyShotAssist();
         }
 
         /// <summary>
@@ -151,6 +160,33 @@ namespace VRSports.Modes.Basketball
             float current = Vector3.Dot(w, axis);
             if (current < assistBackspin)
                 _rb.angularVelocity = w + axis * (assistBackspin - current);
+        }
+
+        /// <summary>
+        /// Доводка броска (казуальная сложность). Если игрок бросил примерно в сторону кольца,
+        /// бот-«тренер» решает обратную задачу баллистики для ТОГО ЖЕ угла вылета, что у игрока,
+        /// и подтягивает скорость мяча к идеальной на долю shotAssist:
+        ///   v' = v + k·(v_идеал − v),  k = 0,9.
+        /// Мяч дальше летит по обычной физике; 10% собственной ошибки игрока остаётся,
+        /// поэтому промахи всё ещё возможны, но бросок «в сторону кольца» почти всегда близок к цели.
+        /// </summary>
+        private void ApplyShotAssist()
+        {
+            if (hoop == null) return;
+            Vector3 v = _rb.linearVelocity;
+            Vector3 p = _rb.position;
+            Vector3 flatV = new Vector3(v.x, 0f, v.z);
+            Vector3 toHoop = hoop.RimCenter - p;
+            toHoop.y = 0f;
+            if (flatV.sqrMagnitude < 0.25f || Vector3.Angle(flatV, toHoop) > assistMaxYaw) return; // бросок не в кольцо
+
+            // Угол вылета игрока, но не положе 52°: при пологой дуге мяч цепляет передний обод (см. тесты бота).
+            float angle = Mathf.Clamp(Mathf.Atan2(v.y, flatV.magnitude) * Mathf.Rad2Deg, 52f, 65f);
+            if (!BasketballBallistics.SolveToHoop(this, hoop, p, angle, 0.07f, out Vector3 ideal)) return;
+
+            Vector3 assisted = Vector3.Lerp(v, ideal, shotAssist);
+            _rb.linearVelocity = assisted;
+            _rb.angularVelocity = BasketballBallistics.Backspin(this, assisted);
         }
 
         private void FixedUpdate()

@@ -149,7 +149,9 @@ namespace VRSports.Modes.Archery
 
             // Ветер: случайное направление поперёк линии стрельбы (влево или вправо).
             float side = Random.value < 0.5f ? -1f : 1f;
-            ArcheryWind.Current = new Vector3(side * w.Wind, 0f, Random.Range(-0.3f, 0.3f) * w.Wind);
+            // Казуальная сложность: ветер в 2,5 раза слабее.
+            float wind = w.Wind * GameSettings.Pick(1f, 0.4f);
+            ArcheryWind.Current = new Vector3(side * wind, 0f, Random.Range(-0.3f, 0.3f) * wind);
 
             thrower.StopAll();
             thrower.Running = w.Discs && !practice;

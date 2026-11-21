@@ -156,7 +156,7 @@ namespace VRSports.Modes.Boxing
             // «Ответный удар» — только когда нет активной серии лап.
             if (DodgeEvery[_round] > 0f && Time.time >= _nextDodge && _sequence == null && !dodgeBar.Busy)
             {
-                _nextDodge = Time.time + DodgeEvery[_round];
+                _nextDodge = Time.time + DodgeEvery[_round] * GameSettings.Pick(1f, 1.6f); // казуально — реже
                 dodgeBar.Attack(_head, _headY);
                 return;
             }
@@ -182,7 +182,7 @@ namespace VRSports.Modes.Boxing
 
         private IEnumerator Sequence()
         {
-            yield return new WaitForSeconds(Gap[_round]);
+            yield return new WaitForSeconds(Gap[_round] * GameSettings.Pick(1f, 1.3f));
             int len = ComboLen[_round] == 1 ? 1 : Random.Range(ComboLen[_round] - 1, ComboLen[_round] + 1);
             BoxingPad last = null;
             for (int i = 0; i < len; i++)
@@ -190,7 +190,9 @@ namespace VRSports.Modes.Boxing
                 BoxingPad pad;
                 do pad = pads[Random.Range(0, pads.Length)]; while (pad == last || !Allowed(pad.Kind));
                 last = pad;
-                pad.Light(HandFor(pad), Window[_round] * (pad.Kind == PadKind.Straight ? 1f : 1.15f));
+                // Казуальная сложность: окно на удар в 1,4 раза длиннее.
+                pad.Light(HandFor(pad), Window[_round] * (pad.Kind == PadKind.Straight ? 1f : 1.15f)
+                                        * GameSettings.Pick(1f, 1.4f));
                 while (pad.IsLit) yield return null; // ждём удар или истечение окна
                 yield return new WaitForSeconds(0.12f);
             }
@@ -229,7 +231,9 @@ namespace VRSports.Modes.Boxing
 
         private void OnPunched(BoxingPad pad, BoxingGlove glove, float speed, bool correctHand, bool wasLit)
         {
-            if (speed < minSpeed) return;
+            // Казуальная сложность: пороги скорости удара на треть ниже (1 / 2 / 3,3 м/с вместо 1,5 / 3 / 5).
+            float k = GameSettings.Pick(1f, 0.67f);
+            if (speed < minSpeed * k) return;
             float strength = Mathf.Clamp01(speed / 7f);
             glove.Feedback(strength);
 
@@ -241,7 +245,7 @@ namespace VRSports.Modes.Boxing
                 return;
             }
 
-            int rating = speed >= greatSpeed ? 3 : speed >= goodSpeed ? 2 : 1;
+            int rating = speed >= greatSpeed * k ? 3 : speed >= goodSpeed * k ? 2 : 1;
             string label = rating == 3 ? "ОТЛИЧНО!" : rating == 2 ? "Хорошо" : "Слабо";
             // Хук и апперкот сложнее прямого — +1 к оценке.
             int bonus = pad.Kind == PadKind.Straight ? 0 : 1;

@@ -36,6 +36,16 @@ namespace VRSports.Modes.Archery
 
         public void Setup(ParticleSystem fx) => shatterFx = fx;
 
+        private void Awake()
+        {
+            // Казуальная сложность: тарелочка и зона попадания в 1,5 раза больше.
+            if (VRSports.Core.GameSettings.Casual)
+            {
+                transform.localScale *= 1.5f;
+                hitRadius *= 1.5f;
+            }
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         private static void ResetList() => Active.Clear();
 

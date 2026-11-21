@@ -173,7 +173,8 @@ namespace VRSports.Modes.Boxing
                     float sx = side == AvatarSide.Left ? -1f : 1f;
                     avatar.SetGlow(new Color(1f, 0.15f, 0.1f), 3f);
                     avatar.SetHandLocal(side, new Vector3(sx * 0.2f, headHeight - 0.1f, -0.05f), 1.6f);
-                    float windup = Rival.Pick(_level, 0.85f, 0.55f, 0.4f) / Mathf.Sqrt(_round);
+                    float windup = Rival.Pick(_level, 0.85f, 0.55f, 0.4f) / Mathf.Sqrt(_round)
+                                   * GameSettings.Pick(1f, 1.3f);   // казуально — больше времени на реакцию
                     if (counter || i > 0) windup *= 0.6f;
                     yield return new WaitForSeconds(windup);
 
@@ -321,7 +322,7 @@ namespace VRSports.Modes.Boxing
                 }
             }
 
-            float dmg = Rival.Pick(_level, 7f, 10f, 13f);
+            float dmg = Rival.Pick(_level, 7f, 10f, 13f) * GameSettings.Pick(1f, 0.6f); // казуально робот бьёт слабее
             PlayerHp = Mathf.Max(0f, PlayerHp - dmg);
             playerBar.Set(PlayerHp / MaxHp);
             Haptics.PulseBoth(1f, 0.25f);
@@ -351,7 +352,8 @@ namespace VRSports.Modes.Boxing
             }
 
             // Урон растёт со скоростью кулака; корпус — 60% от головы.
-            float dmg = Mathf.Clamp(2f + speed * 1.6f, 3f, 14f) * (zone.Kind == ZoneKind.Head ? 1f : 0.6f);
+            float dmg = Mathf.Clamp(2f + speed * 1.6f, 3f, 14f) * (zone.Kind == ZoneKind.Head ? 1f : 0.6f)
+                        * GameSettings.Pick(1f, 1.4f);   // казуально удары игрока сильнее
             BotHp = Mathf.Max(0f, BotHp - dmg);
             botBar.Set(BotHp / MaxHp);
             Vector3 dir = (zone.transform.position - glove.transform.position).normalized;

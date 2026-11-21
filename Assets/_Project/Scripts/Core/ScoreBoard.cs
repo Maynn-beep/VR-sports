@@ -48,7 +48,7 @@ namespace VRSports.Core
         private void Start()
         {
             if (mode == null) return;
-            titleText.text = mode.DisplayName;
+            titleText.text = GameSettings.Casual ? $"{mode.DisplayName} <size=60%>(казуальная)</size>" : mode.DisplayName;
             OnScore(mode.Score);
             OnMessage("Нажмите «Старт»");
             RefreshBest();
@@ -87,7 +87,7 @@ namespace VRSports.Core
 
         private void RefreshBest()
         {
-            bestText.text = SaveSystem.TryGetBest(mode.ModeId, out int best) ? $"Рекорд: {best}" : "Рекорд: —";
+            bestText.text = SaveSystem.TryGetBest(GameSettings.RecordKey(mode.ModeId), out int best) ? $"Рекорд: {best}" : "Рекорд: —";
         }
 
         private void RefreshTimer()

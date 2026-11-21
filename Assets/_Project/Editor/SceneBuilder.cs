@@ -104,6 +104,19 @@ namespace VRSports.EditorTools
                 BuildStation(SportCatalog.All[i], dir * radius, Quaternion.LookRotation(dir), colors[i % colors.Length]);
             }
 
+            // Переключатель сложности — по центру, перед игроком (между станциями).
+            var diff = new GameObject("DifficultyToggle").transform;
+            diff.position = new Vector3(0, 0, 1.35f);
+            Prim(PrimitiveType.Cube, "Stand", diff, new Vector3(0, 0.38f, 0), new Vector3(0.42f, 0.76f, 0.28f),
+                Mat("Stand", new Color(0.25f, 0.27f, 0.32f)));
+            Prim(PrimitiveType.Cube, "Sign", diff, new Vector3(0, 1.15f, 0.04f), new Vector3(1.35f, 0.44f, 0.03f),
+                Mat("Panel_Dark", new Color(0.12f, 0.14f, 0.2f)));
+            var diffButton = Button("ToggleButton", diff, new Vector3(0, 0.76f, 0), "Сменить", new Color(0.85f, 0.45f, 0.9f));
+            var diffLabel = Text("Label", diff, new Vector3(0, 1.22f, 0), "", 0.9f, new Vector2(1.2f, 0.25f), Color.white);
+            var diffHint = Text("Hint", diff, new Vector3(0, 1.03f, 0), "", 0.42f, new Vector2(1.3f, 0.12f),
+                new Color(0.8f, 0.85f, 0.95f));
+            diff.gameObject.AddComponent<DifficultyToggle>().Setup(diffButton, diffLabel, diffHint);
+
             Save(scene, "Hub");
         }
 

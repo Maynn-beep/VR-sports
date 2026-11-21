@@ -134,82 +134,14 @@ namespace VRSports.Modes.Basketball
         private void Shoot()
         {
             Vector3 p = BallInHands();
-            Vector3 target = Beyond(p, hoop.RimCenter);
-            Vector3 v = Vector3.zero;
-            // Итерации упреждения: решаем → время полёта → где будет кольцо → решаем снова.
-            for (int k = 0; k < 3; k++)
-            {
-                if (!Solve(p, target, out v, out float flight)) break;
-                target = Beyond(p, hoop.PredictRim(flight));
-            }
-            if (v == Vector3.zero) v = (target - p).normalized * 8f;
+            // Обратная задача баллистики (с упреждением движущегося кольца) — см. BasketballBallistics.
+            if (!BasketballBallistics.SolveToHoop(ball, hoop, p, launchAngle, aimBeyond, out Vector3 v))
+                v = (hoop.RimCenter - p).normalized * 8f;
 
             float sigmaV = Rival.Pick(_level, 0.045f, 0.022f, 0.009f);
             float sigmaYaw = Rival.Pick(_level, 2.8f, 1.5f, 0.6f);
             v = Quaternion.AngleAxis(Rival.Gaussian(sigmaYaw), Vector3.up) * v * (1f + Rival.Gaussian(sigmaV));
-            ball.BotLaunch(p, v, Backspin(v));
-        }
-
-        private Vector3 Beyond(Vector3 from, Vector3 rim)
-        {
-            Vector3 d = rim - from;
-            d.y = 0f;
-            return rim + d.normalized * aimBeyond;
-        }
-
-        /// <summary>Обратное вращение, как у помощника закрутки у игрока: ось = d × up.</summary>
-        private Vector3 Backspin(Vector3 v)
-        {
-            Vector3 d = new Vector3(v.x, 0f, v.z);
-            return d.sqrMagnitude < 1e-4f ? Vector3.zero : Vector3.Cross(d.normalized, Vector3.up) * ball.AssistBackspin;
-        }
-
-        private bool Solve(Vector3 p, Vector3 target, out Vector3 velocity, out float flight)
-        {
-            Vector3 flat = target - p;
-            flat.y = 0f;
-            float dist = flat.magnitude;
-            Vector3 dir = flat / Mathf.Max(dist, 1e-4f);
-            float a = launchAngle * Mathf.Deg2Rad;
-            Vector3 unit = dir * Mathf.Cos(a) + Vector3.up * Mathf.Sin(a);
-
-            float lo = 3f, hi = 16f;
-            velocity = Vector3.zero;
-            flight = 0f;
-            for (int i = 0; i < 20; i++)
-            {
-                float mid = (lo + hi) / 2f;
-                float reach = Simulate(p, unit * mid, target.y, out float t);
-                if (reach < dist) lo = mid; else hi = mid;
-                flight = t;
-            }
-            velocity = unit * ((lo + hi) / 2f);
-            return Simulate(p, velocity, target.y, out flight) > 0f;
-        }
-
-        /// <summary>
-        /// Численное моделирование полёта (явный метод Эйлера, шаг 5 мс).
-        /// Возвращает горизонтальную дальность в момент, когда мяч на спуске опустился до высоты y,
-        /// или −1, если мяч до этой высоты не долетел.
-        /// </summary>
-        private float Simulate(Vector3 p0, Vector3 v0, float y, out float time)
-        {
-            const float dt = 0.005f;
-            Vector3 p = p0, v = v0, w = Backspin(v0);
-            float m = ball.Mass;
-            for (time = 0f; time < 4f; time += dt)
-            {
-                Vector3 force = -ball.DragK * v.magnitude * v + ball.MagnusK * Vector3.Cross(w, v);
-                v += (Physics.gravity + force / m) * dt;
-                p += v * dt;
-                if (v.y < 0f && p.y <= y)
-                {
-                    Vector3 d = p - p0;
-                    d.y = 0f;
-                    return d.magnitude;
-                }
-            }
-            return -1f;
+            ball.BotLaunch(p, v, BasketballBallistics.Backspin(ball, v));
         }
     }
 }

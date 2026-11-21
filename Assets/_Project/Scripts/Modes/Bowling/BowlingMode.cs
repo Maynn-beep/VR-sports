@@ -25,6 +25,8 @@ namespace VRSports.Modes.Bowling
         [SerializeField] private BowlingPin[] pins;
         [SerializeField] private BowlingScoreSheet sheet;
         [SerializeField] private BowlingBot bot;
+        [Tooltip("Бортики в жёлобах — включаются только в казуальной сложности.")]
+        [SerializeField] private GameObject bumpers;
 
         [Header("Тайминги броска")]
         [SerializeField] private float rollTimeout = 12f;
@@ -45,9 +47,9 @@ namespace VRSports.Modes.Bowling
         private bool _ballInPit;
         private int _strikeStreak;
 
-        public void Setup(BowlingBall b, BowlingPin[] p, BowlingScoreSheet s, BowlingBot rival)
+        public void Setup(BowlingBall b, BowlingPin[] p, BowlingScoreSheet s, BowlingBot rival, GameObject bumperRails)
         {
-            ball = b; pins = p; sheet = s; bot = rival;
+            ball = b; pins = p; sheet = s; bot = rival; bumpers = bumperRails;
         }
 
         private void OnEnable()
@@ -62,6 +64,9 @@ namespace VRSports.Modes.Bowling
 
         private void Start()
         {
+            // Казуальная сложность: бортики (bumpers) не дают шару упасть в жёлоб —
+            // как на детских дорожках в настоящих боулинг-клубах.
+            if (bumpers != null) bumpers.SetActive(GameSettings.Casual);
             ResetRack();
             ball.ReturnToRack();
             OnRivalChanged();

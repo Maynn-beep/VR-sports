@@ -114,7 +114,9 @@ namespace VRSports.Modes.Bowling
             Vector3 dir = v.normalized;
             Vector3 w = _rb.angularVelocity;
             float along = Vector3.Dot(w, dir);          // вращение вокруг оси движения
-            _rb.angularVelocity = w + dir * (along * (spinAssist - 1f));
+            // Казуальная сложность: закрутка усиливается ещё в 1,6 раза — хук получается легче.
+            float assist = spinAssist * VRSports.Core.GameSettings.Pick(1f, 1.6f);
+            _rb.angularVelocity = w + dir * (along * (assist - 1f));
         }
 
         private void FixedUpdate()

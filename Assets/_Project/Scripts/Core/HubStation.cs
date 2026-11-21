@@ -31,17 +31,26 @@ namespace VRSports.Core
                 titleText.text = e.Title;
                 descriptionText.text = e.Description;
             }
-            bestText.text = SaveSystem.TryGetBest(modeId, out int best) ? $"Рекорд: {best}" : "Рекорда пока нет";
+            RefreshBest();
+        }
+
+        /// <summary>Рекорд — для выбранной сложности (у казуальной свой).</summary>
+        private void RefreshBest(bool _ = false)
+        {
+            bestText.text = SaveSystem.TryGetBest(GameSettings.RecordKey(modeId), out int best)
+                ? $"Рекорд: {best}" : "Рекорда пока нет";
         }
 
         private void OnEnable()
         {
             if (playButton != null) playButton.Pressed += Play;
+            GameSettings.DifficultyChanged += RefreshBest;
         }
 
         private void OnDisable()
         {
             if (playButton != null) playButton.Pressed -= Play;
+            GameSettings.DifficultyChanged -= RefreshBest;
         }
 
         private void Play()

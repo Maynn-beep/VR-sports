@@ -1,5 +1,6 @@
 using System.Collections;
 using UnityEngine;
+using VRSports.Core;
 
 namespace VRSports.Modes.Archery
 {
@@ -26,6 +27,12 @@ namespace VRSports.Modes.Archery
         {
             _rb = GetComponent<Rigidbody>();
             _home = transform.position;
+            // Казуальная сложность: мишень в 1,5 раза крупнее (и зона подсчёта колец тоже).
+            if (GameSettings.Casual)
+            {
+                faceCenter.parent.localScale *= 1.5f;
+                radius *= 1.5f;
+            }
         }
 
         public Vector3 FaceCenter => faceCenter.position;

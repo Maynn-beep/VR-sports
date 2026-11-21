@@ -167,7 +167,7 @@ namespace VRSports.EditorTools
                 var spawn = new GameObject($"Spawn_{i}").transform;
                 spawn.SetParent(tray, false);
                 spawn.localPosition = new Vector3((i % 2 == 0 ? -1 : 1) * 0.14f, 0.8f + BallR + 0.03f, (i < 2 ? -1 : 1) * 0.14f);
-                balls[i] = MakeBall($"Basketball_{i + 1}", spawn, ballMesh, ballMat, seamMat, ballPhys, fireMat, trailMat, false);
+                balls[i] = MakeBall($"Basketball_{i + 1}", spawn, ballMesh, ballMat, seamMat, ballPhys, fireMat, trailMat, hoop, false);
             }
 
             // ---------- робот-соперник со своим мячом (другого цвета — чтобы не путать)
@@ -177,7 +177,7 @@ namespace VRSports.EditorTools
             botSpawn.SetParent(avatar.transform, false);
             botSpawn.localPosition = new Vector3(0f, 1.05f, 0.32f);
             var botBall = MakeBall("Basketball_Bot", botSpawn, ballMesh, Mat("Basketball_Bot", new Color(0.3f, 0.45f, 0.85f)),
-                seamMat, ballPhys, fireMat, trailMat, true);
+                seamMat, ballPhys, fireMat, trailMat, hoop, true);
             var bot = avatar.gameObject.AddComponent<BasketballBot>();
             bot.Setup(avatar, botBall, hoop);
 
@@ -185,7 +185,7 @@ namespace VRSports.EditorTools
         }
 
         private static BasketballBall MakeBall(string name, Transform spawn, Mesh ballMesh, Material ballMat, Material seamMat,
-            PhysicsMaterial ballPhys, Material fireMat, Material trailMat, bool rival)
+            PhysicsMaterial ballPhys, Material fireMat, Material trailMat, Hoop hoop, bool rival)
         {
             {
                 var go = MeshObject(name, null, spawn.position, ballMesh, ballMat, seamMat);
@@ -218,7 +218,7 @@ namespace VRSports.EditorTools
                 trail.shadowCastingMode = UnityEngine.Rendering.ShadowCastingMode.Off;
 
                 var ball = go.AddComponent<BasketballBall>();
-                ball.Setup(spawn, fireMat, trail, rival);
+                ball.Setup(spawn, fireMat, trail, hoop, rival);
                 return ball;
             }
         }
