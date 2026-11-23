@@ -47,6 +47,17 @@ namespace VRSports.Modes.Bowling
             _rb.Sleep(); // «усыпляем» тело: стоящая кегля не тратит время физики
         }
 
+        /// <summary>
+        /// Стук кегли: громкость пропорциональна скорости удара (relativeVelocity).
+        /// minDistance 6 м — кегли в 19 м от игрока, иначе их почти не слышно.
+        /// </summary>
+        private void OnCollisionEnter(Collision c)
+        {
+            float speed = c.relativeVelocity.magnitude;
+            if (speed < 0.6f) return;
+            VRSports.Core.Sfx.Play("pin_hit", c.GetContact(0).point, Mathf.Clamp01(speed / 5f), 6f, 0.12f);
+        }
+
         /// <summary>Убрать сбитую кеглю с площадки (подметание).</summary>
         public void Remove() => gameObject.SetActive(false);
     }

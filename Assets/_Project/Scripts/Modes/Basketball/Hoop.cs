@@ -91,6 +91,7 @@ namespace VRSports.Modes.Basketball
 
             ball.TopSensorTime = -10f; // одно прохождение — одно попадание
             rb.linearVelocity *= netDamping; // сетка «ловит» мяч
+            VRSports.Core.Sfx.Play("net_swish", rimCenter.position, 1f, 4f);
             Scored?.Invoke(ball);
 
             if (_swish != null) StopCoroutine(_swish);

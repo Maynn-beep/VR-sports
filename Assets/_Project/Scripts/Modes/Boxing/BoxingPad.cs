@@ -99,6 +99,7 @@ namespace VRSports.Modes.Boxing
             bool correct = wasLit && glove.Hand == RequiredHand;
             if (wasLit) TurnOff();
 
+            VRSports.Core.Sfx.Play("punch_pad", point, Mathf.Clamp01(into / 6f));
             if (_recoil != null) StopCoroutine(_recoil);
             _recoil = StartCoroutine(Recoil(Mathf.Clamp01(into / 7f)));
             Punched?.Invoke(this, glove, into, correct, wasLit);

@@ -127,11 +127,13 @@ namespace VRSports.Core
             {
                 ShowMessage(i.ToString());
                 Haptics.PulseBoth(0.2f, 0.05f);
+                Sfx.Play2D("countdown", 0.6f);
                 yield return new WaitForSeconds(1f);
             }
 
             ShowMessage("Вперёд!");
             Haptics.PulseBoth(0.6f, 0.15f);
+            Sfx.Play2D("go", 0.7f);
             SetState(ModeState.Playing);
             _countdown = null;
             OnGameStarted();
@@ -170,10 +172,12 @@ namespace VRSports.Core
                 string verdict = diff > 0 ? "ПОБЕДА!" : diff < 0 ? "Поражение" : "Ничья";
                 ShowMessage($"{verdict}  {Score} : {RivalScore}" + (isRecord ? "  Рекорд!" : ""));
                 Haptics.PulseBoth(diff > 0 ? 0.9f : 0.4f, 0.3f);
+                Sfx.Play2D(diff > 0 ? "record" : diff < 0 ? "fail" : "finish", 0.8f);
                 return;
             }
             ShowMessage(isRecord ? $"Новый рекорд: {Score}!" : $"Итог: {Score}");
             Haptics.PulseBoth(isRecord ? 0.8f : 0.4f, 0.3f);
+            Sfx.Play2D(isRecord ? "record" : "finish", 0.8f);
         }
 
         public void AddScore(int points)

@@ -42,6 +42,7 @@ namespace VRSports.Modes.Archery
             var start = new Vector3(side * sideX, 0.8f, z);
             var velocity = new Vector3(-side * Random.Range(4.5f, 5.5f), Random.Range(6.2f, 7.2f), Random.Range(-0.5f, 0.5f));
             disc.Launch(start, velocity);
+            VRSports.Core.Sfx.Play("clay_launch", start, 0.9f, 6f);
         }
 
         public void StopAll()

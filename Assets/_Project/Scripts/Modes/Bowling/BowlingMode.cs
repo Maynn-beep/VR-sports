@@ -216,6 +216,7 @@ namespace VRSports.Modes.Bowling
                     _ => $"{_strikeStreak} страйков подряд!"
                 });
                 Haptics.PulseBoth(1f, 0.4f);
+                Sfx.Play2D("record", 0.6f);   // страйк — фанфара
                 return;
             }
 

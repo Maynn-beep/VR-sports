@@ -201,9 +201,22 @@ namespace VRSports.Modes.Basketball
 
         private void OnCollisionEnter(Collision c)
         {
+            PlayImpact(c);
             if (c.collider.GetComponent<BasketballFloor>() == null) return;
             _lastFloorContact = Time.time;
             if (ShotActive) Miss();
+        }
+
+        /// <summary>Звук удара зависит от того, обо что ударился мяч: пол, обод (металл) или щит.</summary>
+        private void PlayImpact(Collision c)
+        {
+            float speed = c.relativeVelocity.magnitude;
+            if (speed < 0.8f) return;
+            float vol = Mathf.Clamp01(speed / 7f);
+            string n = c.collider.name;
+            string sound = n.StartsWith("RimCollider") || n == "RimMount" ? "rim_hit"
+                : n == "Backboard" ? "board_hit" : "ball_bounce";
+            VRSports.Core.Sfx.Play(sound, c.GetContact(0).point, vol, 2.5f);
         }
 
         private void OnCollisionStay(Collision c)

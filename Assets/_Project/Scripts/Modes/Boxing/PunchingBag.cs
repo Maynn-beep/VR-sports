@@ -40,6 +40,7 @@ namespace VRSports.Modes.Boxing
             _rb.AddForceAtPosition(impulse, point, ForceMode.Impulse);
 
             LastSpeed = speed;
+            VRSports.Core.Sfx.Play("punch_bag", point, Mathf.Clamp01(speed / 6f));
             glove.Feedback(Mathf.Clamp01(speed / 7f));
             if (readout != null)
                 readout.text = $"Удар: {speed:F1} м/с\nИмпульс: {impulse.magnitude:F1} кг·м/с";

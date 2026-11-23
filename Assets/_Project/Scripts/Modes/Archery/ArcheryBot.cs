@@ -157,6 +157,7 @@ namespace VRSports.Modes.Archery
             UpdateLabel();
             arrow.transform.SetPositionAndRotation(NockPosition(1f), Quaternion.LookRotation(_aim));
             arrow.Launch(_aim * (playerBow.MaxArrowSpeed * power));
+            Sfx.Play("bow_release", arrow.transform.position, 0.8f);
             ArrowShot?.Invoke(arrow);
         }
 

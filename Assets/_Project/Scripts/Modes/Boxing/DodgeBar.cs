@@ -65,6 +65,7 @@ namespace VRSports.Modes.Boxing
                 yield return null;
             }
             // 2. Выпад к игроку.
+            VRSports.Core.Sfx.Play("dodge_whoosh", bar.position, 0.9f);
             for (float t = 0f; t < strikeTime; t += Time.deltaTime)
             {
                 bar.localPosition = new Vector3(0f, 0f, Mathf.Lerp(restZ, strikeZ, t / strikeTime));
@@ -74,6 +75,7 @@ namespace VRSports.Modes.Boxing
 
             // 3. Проверка: голова ниже линии нырка?
             bool dodged = head.position.y < headY - duckDepth;
+            if (!dodged) VRSports.Core.Sfx.Play2D("player_hit", 0.8f);
             Resolved?.Invoke(dodged);
 
             // 4. Возврат.

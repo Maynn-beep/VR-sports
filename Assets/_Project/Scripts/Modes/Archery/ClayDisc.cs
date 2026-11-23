@@ -83,6 +83,7 @@ namespace VRSports.Modes.Archery
 
         public void Shatter()
         {
+            VRSports.Core.Sfx.Play("clay_shatter", transform.position, 1f, 8f);
             if (shatterFx != null)
             {
                 shatterFx.transform.position = transform.position;

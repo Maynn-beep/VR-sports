@@ -189,15 +189,33 @@ namespace VRSports.EditorTools
             var standPos = layout.ControlsPosition;
             var stand = new GameObject("Controls").transform;
             stand.SetPositionAndRotation(standPos, Quaternion.LookRotation(standPos.normalized));
-            Prim(PrimitiveType.Cube, "Stand", stand, new Vector3(0, 0.42f, 0), new Vector3(0.72f, 0.84f, 0.3f),
+            Prim(PrimitiveType.Cube, "Stand", stand, new Vector3(0, 0.42f, 0), new Vector3(0.82f, 0.84f, 0.3f),
                 Mat("Stand", new Color(0.25f, 0.27f, 0.32f)));
-            var start = Button("StartButton", stand, new Vector3(-0.23f, 0.84f, 0), "Старт", new Color(0.3f, 0.8f, 0.4f));
+            var start = Button("StartButton", stand, new Vector3(-0.27f, 0.84f, 0), "Старт", new Color(0.3f, 0.8f, 0.4f));
             var rivalBtn = Button("RivalButton", stand, new Vector3(0f, 0.84f, 0), "Соперник", new Color(0.85f, 0.45f, 0.9f));
             var rivalLabel = rivalBtn.transform.Find("Label").GetComponent<TMP_Text>();
             rivalLabel.rectTransform.sizeDelta = new Vector2(0.4f, 0.2f);
             rivalLabel.transform.localPosition = new Vector3(0, 0.14f, 0);
-            var hub = Button("HubButton", stand, new Vector3(0.23f, 0.84f, 0), "В хаб", new Color(0.95f, 0.6f, 0.25f));
+            var hub = Button("HubButton", stand, new Vector3(0.27f, 0.84f, 0), "В хаб", new Color(0.95f, 0.6f, 0.25f));
             stand.gameObject.AddComponent<ModeControls>().Setup(mode, start, hub, rivalBtn, rivalLabel);
+
+            // Табличка «Как играть» — слева от пульта (со стороны игрока), чуть наклонена назад,
+            // чтобы читалась сверху вниз, как пюпитр.
+            var tut = new GameObject("Tutorial").transform;
+            tut.SetParent(stand, false);
+            tut.localPosition = new Vector3(-0.85f, 1.25f, 0.05f);
+            tut.localRotation = Quaternion.Euler(15f, 0f, 0f);
+            var tutPanel = Prim(PrimitiveType.Cube, "Panel", tut, new Vector3(0, 0, 0.012f), new Vector3(0.96f, 0.8f, 0.02f),
+                Mat("Panel_Dark", new Color(0.12f, 0.14f, 0.2f)));
+            Object.DestroyImmediate(tutPanel.GetComponent<Collider>());
+            GameObjectUtility.SetStaticEditorFlags(tutPanel, 0);
+            var tutText = Text("Text", tut, Vector3.zero, "", 0.42f, new Vector2(0.9f, 0.74f), Color.white);
+            tutText.textWrappingMode = TextWrappingModes.Normal;
+            tutText.alignment = TextAlignmentOptions.TopLeft;
+            var tutRoot = new GameObject("TutorialRoot").transform;   // включается/выключается целиком
+            tutRoot.SetParent(stand, false);
+            tut.SetParent(tutRoot, true);
+            stand.gameObject.AddComponent<TutorialPanel>().Setup(mode, tutRoot.gameObject, tutText);
 
             // «Начинка» конкретного вида спорта (дорожка, кольцо, мишени...).
             buildContent?.Invoke(mode);
@@ -236,6 +254,8 @@ namespace VRSports.EditorTools
             rig.transform.SetPositionAndRotation(Vector3.zero, Quaternion.identity);
 
             var cam = rig.GetComponentInChildren<Camera>(true);
+            // «Уши» игрока: звук слышен из положения головы (3D-звук в VR).
+            if (cam.GetComponent<AudioListener>() == null) cam.gameObject.AddComponent<AudioListener>();
             var fader = cam.gameObject.AddComponent<ScreenFader>();
             var so = new SerializedObject(fader);
             so.FindProperty("fadeMaterial").objectReferenceValue = FadeMaterial();
@@ -321,7 +341,7 @@ namespace VRSports.EditorTools
             var col = cap.AddComponent<BoxCollider>();
             col.size = new Vector3(1f, 2.5f, 1f); // чуть выше самой шляпки — легче попасть рукой
 
-            Text("Label", root.transform, new Vector3(0, 0.12f, 0), label, 0.6f, new Vector2(0.4f, 0.12f), Color.white);
+            Text("Label", root.transform, new Vector3(0, 0.12f, 0), label, 0.5f, new Vector2(0.4f, 0.12f), Color.white);
 
             root.AddComponent<XRSimpleInteractable>();
             var button = root.AddComponent<VRButton>();

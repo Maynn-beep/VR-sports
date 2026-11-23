@@ -40,6 +40,7 @@ namespace VRSports.Modes.Bowling
         public event Action Thrown;
 
         private Collider _col;
+        private AudioSource _rollSound;   // гул качения, громкость ~ скорость
         private Rigidbody _rb;
         private XRGrabInteractable _grab;
         private bool _armed; // отпущен, но ещё не пересёк линию заступа
@@ -79,6 +80,7 @@ namespace VRSports.Modes.Bowling
             _rb = GetComponent<Rigidbody>();
             _grab = GetComponent<XRGrabInteractable>();
             _rb.maxAngularVelocity = maxSpin;
+            _rollSound = VRSports.Core.Sfx.Loop("ball_roll", gameObject, 2f);
         }
 
         private void OnEnable()
@@ -133,6 +135,14 @@ namespace VRSports.Modes.Bowling
 
         private void Update()
         {
+            // Гул катящегося шара: только когда шар на дорожке (у пола) и движется.
+            bool rolling = !IsHeld && !_rb.isKinematic && transform.position.y < Radius + 0.03f && Speed > 0.3f;
+            float target = rolling ? Mathf.Clamp01(Speed / 8f) * 0.8f : 0f;
+            _rollSound.volume = Mathf.MoveTowards(_rollSound.volume, target, Time.deltaTime * 3f);
+            _rollSound.pitch = 0.8f + 0.04f * Speed;
+            if (_rollSound.volume > 0.01f && !_rollSound.isPlaying) _rollSound.Play();
+            else if (_rollSound.volume <= 0.01f && _rollSound.isPlaying) _rollSound.Stop();
+
             // Шар укатился за пределы мира — возвращаем на подставку.
             if (!IsHeld && transform.position.y < -2f) ReturnToRack();
         }
@@ -173,6 +183,14 @@ namespace VRSports.Modes.Bowling
         }
 
         public float Radius => ((SphereCollider)_col).radius;
+
+        /// <summary>Шар уронили — глухой удар (только если падение заметное).</summary>
+        private void OnCollisionEnter(Collision c)
+        {
+            float vy = Mathf.Abs(c.relativeVelocity.y);
+            if (vy > 1.2f && c.collider.GetComponent<BowlingPin>() == null)
+                VRSports.Core.Sfx.Play("ball_drop", transform.position, Mathf.Clamp01(vy / 4f), 2f);
+        }
 
         /// <summary>Пока шар катится, его нельзя подхватить лучом издалека.</summary>
         public void SetGrabbable(bool value) => _grab.enabled = value;

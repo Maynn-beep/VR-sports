@@ -138,7 +138,12 @@ namespace VRSports.Modes.Boxing
                 {
                     _round = round;
                     sparring.SetRound(round + 1);
-                    if (round > 0) { ShowMessage($"Раунд {round + 1} — робот ускоряется!"); Haptics.PulseBoth(0.6f, 0.25f); }
+                    if (round > 0)
+                    {
+                        ShowMessage($"Раунд {round + 1} — робот ускоряется!");
+                        Haptics.PulseBoth(0.6f, 0.25f);
+                        Sfx.Play2D("bell", 0.6f);
+                    }
                 }
                 return;
             }
@@ -149,6 +154,7 @@ namespace VRSports.Modes.Boxing
                 {
                     ShowMessage(round == 1 ? "Раунд 2 — хуки! Тренажёр бьёт в ответ, ныряйте" : "Раунд 3 — апперкоты и максимальный темп!");
                     Haptics.PulseBoth(0.6f, 0.25f);
+                    Sfx.Play2D("bell", 0.6f);   // гонг — новый раунд
                 }
                 _nextDodge = Time.time + 3f;
             }

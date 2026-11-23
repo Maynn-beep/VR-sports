@@ -61,6 +61,7 @@ namespace VRSports.Core
         {
             SetColor(hoverColor);
             Haptics.Pulse(args.interactorObject.handedness, 0.1f, 0.03f);
+            Sfx.Play("ui_hover", transform.position, 0.4f, 0.5f);
         }
 
         private void OnHoverExit(HoverExitEventArgs args)
@@ -74,6 +75,7 @@ namespace VRSports.Core
             _lastPressTime = Time.time;
             _pressAnim = 1f;
             Haptics.Pulse(args.interactorObject.handedness, 0.5f, 0.08f);
+            Sfx.Play("ui_click", transform.position, 0.8f, 0.5f);
             onPressed.Invoke();
             Pressed?.Invoke();
         }

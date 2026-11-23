@@ -135,6 +135,8 @@ namespace VRSports.Modes.Archery
 
             if (ArrowsLeft > 0) ArrowsLeft--;
             UpdateAmmoText();
+            Sfx.Play("bow_release", transform.position, 0.5f + 0.5f * draw / maxDraw);
+            Sfx.Play("arrow_whoosh", transform.position + transform.forward, 0.5f);
             ArrowShot?.Invoke(arrow);
             _releaseAnim = 1f;
         }

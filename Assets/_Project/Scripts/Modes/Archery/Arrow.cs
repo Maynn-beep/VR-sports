@@ -124,6 +124,8 @@ namespace VRSports.Modes.Archery
             transform.position = hit.point + dir * penetration - transform.forward * tipOffset;
 
             var target = hit.collider.GetComponentInParent<ArcheryTarget>();
+            // Стрела воткнулась: в мишень — плотный «тук» соломы, в землю — глухо. Мишени далеко — minDistance 8 м.
+            VRSports.Core.Sfx.Play(target != null ? "arrow_hit" : "arrow_ground", hit.point, target != null ? 1f : 0.6f, 8f);
             // Втыкаемся в движущуюся мишень — становимся её дочерним объектом и едем вместе с ней.
             if (target != null) transform.SetParent(target.transform, true);
             Finish(target, hit.point);
